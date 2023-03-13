@@ -1,0 +1,12 @@
+{
+  "tasks": {
+    "test": "deno test -A --doc "
+  },
+  "lint": {
+    "rules": {
+      "exclude": [
+        "prefer-const"
+      ]
+    }
+  }
+}
