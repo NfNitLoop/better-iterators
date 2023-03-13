@@ -4,7 +4,7 @@
  * 
  * The [lazy] function is the simplest way to get started.
  * 
- * ```
+ * ```ts
  * import { lazy, range } from "./mod.ts"
  * 
  * // You can use any Iterable here (such as an Array, or Generator), but
@@ -40,7 +40,7 @@
  * 
  * Compare this version, which tries to do async work inside of Lazy:
  * 
- * ```
+ * ```ts
  * import { lazy, range } from "./mod.ts"
  * let urls = [
  *     "https://www.google.com/",
@@ -68,7 +68,7 @@
  * For a simpler API when working with async code, you can convert a Lazy to a
  * LazyAsync, which provides a similar API, but better handles async pipelines:
  * 
- * ```
+ * ```ts
  * import { lazy, range } from "./mod.ts"
  * let urls = [
  *     "https://www.google.com/",
