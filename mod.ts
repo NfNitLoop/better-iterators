@@ -30,7 +30,7 @@
  * // Consumes all values:
  * for (let result of results2) { console.log("first pass:", result)}
  * 
- * // Has no more values to yield:
+ * // Has no more values to yield: (may throw an exception in the future!)
  * for (let result of results2) { console.log("second pass:", result)}
  * ```
  * 
@@ -65,7 +65,34 @@
  * // will start making progress on all of them simultaneously.
  * ```
  * 
- * For the
+ * For a simpler API when working with async code, you can convert a Lazy to a
+ * LazyAsync, which provides a similar API, but better handles async pipelines:
+ * 
+ * ```
+ * import { lazy, range } from "./mod.ts"
+ * let urls = [
+ *     "https://www.google.com/",
+ *     "https://www.bing.com/"
+ * ]
+ * let lazySizes = lazy(urls)
+ *     .toAsync()
+ *     .map(async (url) => {
+ *         let response = await fetch(url)
+ *         return await response.text()
+ *     })
+ *     // here the type is LazyAsync<string> (not Lazy<Promise<string>>)
+ *     // so further lazy functions are easier to work with:
+ *     .map(it => it.length)
+ * 
+ * // The async version of toMap() does the least surprising thing and processes
+ * // the pipeline serially by default, no unbounded parallelism:
+ * let sizes = await lazySizes.toArray()
+ * ```
+ * 
+ * If you DO want parallelism, the {@link LazyAsync.mapPar} and
+ * {@link LazyAsync.mapParUnordered} methods let you explicitly opt into this
+ * behavior with bounded parallelism.
+ * 
  * 
  * 
  * @module
@@ -169,6 +196,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
 /** 
  * Just making sure the same methods are in both places.
  * TODO: Can we capture this more strongly-typed?
+ * Maybe use conditional types for async/not.
  */
 interface LazyShared<T> {
     map: unknown
@@ -181,6 +209,11 @@ interface LazyShared<T> {
 
     // TODO:
     // partition()
+    // skip()
+    // first()
+    // last()
+    // associateBy()
+    // groupBy()
 }
 
 export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
@@ -244,8 +277,8 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
     }
 
     /**
-     * A version of {@link mapPar} that does *not* enforce ordering, so might
-     * work a bit faster.
+     * A version of {@link mapPar} that does *not* enforce ordering, so doesn't
+     * suffer from head-of-line blocking.
      */
     mapParUnordered<Out>(max: number, transform: Transform<T, Promise<Out>>): LazyAsync<Out> {
         let inner = this.#inner

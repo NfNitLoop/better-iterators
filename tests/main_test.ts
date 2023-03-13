@@ -43,7 +43,7 @@ Deno.test(async function asyncViaLazy() {
         "https://www.bing.com/",
     ]
     let lazySizes = lazy(urls)
-        .also(url => console.log(`fetching: ${url}`))
+        .also(url => console.log(`simulating fetching: ${url}`))
         .map(async (url) => {
             // let response = await fetch(url)
             // if (!response.ok) {
@@ -121,7 +121,7 @@ Deno.test(async function asyncLazyMaxParallelism() {
         .mapPar(maxParallel, async (input) => {
             tracker.start()
             // trying to control for parallelism for async tasks:
-            await delay(50)
+            await delay(5)
             tracker.end()
             return input*input
         })
