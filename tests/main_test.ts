@@ -1,9 +1,9 @@
-import { assert, assertEquals, assertNotEquals } from "https://deno.land/std@0.179.0/testing/asserts.ts";
+import { assert, assertEquals, assertNotEquals, assertThrows } from "https://deno.land/std@0.179.0/testing/asserts.ts";
 import { delay } from "https://deno.land/std@0.179.0/async/delay.ts";
 
 
 import { lazy, range } from "../mod.ts";
-import { ParallelTracker, Timer } from "./helpers.ts";
+import { bothTypes, ParallelTracker, Timer } from "./helpers.ts";
 
 Deno.test("basic", () => {
     let iterable = range({to: 1000})
@@ -201,4 +201,21 @@ Deno.test(function generatorState() {
     // Only finishes after returning "done":
     iter.next()
     assertEquals(out, ["starting", "done"])
+})
+
+/**
+ * tests that a Lazy(Async) gets "consumed" when it's used, so it can not
+ * be used more than once (which would result in undefined behavior).
+ */
+Deno.test(async function lazyConsumed(t: Deno.TestContext) {
+    for (const [name, lazyIter] of bothTypes()) {
+        await t.step(name, () => {
+            // should work OK:
+            lazyIter.map(it => it * it)
+
+            assertThrows(() => {
+                lazyIter.map(it => it * it)
+            })
+        })
+    }
 })

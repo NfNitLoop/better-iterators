@@ -1,5 +1,7 @@
 // deno-lint-ignore-file explicit-module-boundary-types
 
+import { lazy, LazyShared, range } from "../mod.ts";
+
 export class ParallelTracker {
     count = 0
     highest = 0
@@ -37,4 +39,12 @@ export class Timer {
         let end = this.ended ?? Date.now()
         return end - start
     }
+}
+
+
+/** Give back both types of lazy iterators, so we can test against them both */
+export function *bothTypes(): Iterable<[name: string, iter: LazyShared<number>]> {
+    let input = range({to: 10}).toArray()
+    yield ["sync", lazy(input)]
+    yield ["async", lazy(input).toAsync() ]
 }

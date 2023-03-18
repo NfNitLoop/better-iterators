@@ -70,7 +70,7 @@
  * ```
  * 
  * This approach might seem to work, but it has unbounded parallelism. If you
- * have N URLs, .toArray() will create N promises, and the JavaScript runtime
+ * have N URLs, `.toArray()` will create N promises, and the JavaScript runtime
  * will start making progress on all of them simultaneously.
  * 
  * 
@@ -125,12 +125,13 @@ export function lazy<T>(iter: Iterable<T>|AsyncIterable<T>): Lazy<T>|LazyAsync<T
 
 // Note: There seems to be a bug in `deno doc` so I'm going to copy/paste the
 // method docs onto the implementors. 😢
+// https://github.com/denoland/deno_doc/issues/136
 /**
  * Shared interface for {@link Lazy} and {@link LazyAsync}. 
  * (Note: `LazyAsync` implements some methods that are not shared.)
  * 
  * You shouldn't need to interact with these classes or this interface
- * directly, though. You can convert to the appropriate one with {@link lazy()}.
+ * directly, though. You can convert to the appropriate one with {@link lazy}.
  * 
  * Operations on lazy iterators consume the underlying iterator. You should not
  * use them again.
@@ -173,14 +174,23 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
     }
 
     private constructor(iter: Iterable<T>) {
-        this.#inner = iter
+        this.#innerStore = iter
     }
 
-    // TODO: takeInner, so that a Lazy can't be re-used.
-    #inner: Iterable<T>;
+    #innerStore?: Iterable<T>
 
-    * [Symbol.iterator](): Iterator<T> {
-        yield * this.#inner
+    get #inner(): Iterable<T> {
+        let inner = this.#innerStore
+        this.#innerStore = undefined
+
+        if (inner === undefined) {
+            throw new Error(`Logic Error: Iteration for this Lazy has already been consumed`)
+        }
+        return inner
+    }
+
+    [Symbol.iterator](): Iterator<T> {
+        return this.#inner[Symbol.iterator]()
     }
 
     /**
@@ -267,13 +277,23 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
     }
 
     private constructor(iter: AsyncIterable<T>) {
-        this.#inner = iter
+        this.#innerStore = iter
     }
         
-    #inner: AsyncIterable<T>;
+    #innerStore?: AsyncIterable<T>
 
-    async * [Symbol.asyncIterator](): AsyncIterator<T> {
-        yield * this.#inner
+    get #inner(): AsyncIterable<T> {
+        let inner = this.#innerStore
+        this.#innerStore = undefined
+
+        if (inner === undefined) {
+            throw new Error(`Logic Error: Iteration for this LazyAsync has already been consumed`)
+        }
+        return inner
+    }
+
+    [Symbol.asyncIterator](): AsyncIterator<T> {
+        return this.#inner[Symbol.asyncIterator]()
     }
 
     /**
