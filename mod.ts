@@ -39,7 +39,7 @@
  * 
  * for (let result of results) { console.log("first pass:", result)}
  * 
- * // Has no more values to yield: (may throw an exception in the future!)
+ * // Has no more values to yield, will throw an exception:
  * for (let result of results) { console.log("second pass:", result)}
  * ```
  * 
@@ -158,8 +158,16 @@ export interface LazyShared<T> {
     /** Injects a function to run on each T as it is being iterated. */
     also(fn: (t: T) => void): LazyShared<T>
 
+    /** Partition items into `matches` and `others` according to Filter `f`. */
+    partition(f: Filter<T>): Awaitable<Partitioned<T>>
+
+    /** Get the first item. @throws if there are no items. */
+    first(): Awaitable<T>
+
+    /** Get the first item. Returns `defaultValue` if there is no first item. */
+    firstOr<D>(defaultValue: D): Awaitable<T|D>
+
     // TODO:
-    // partition()
     // skip()
     // first()
     // last()
@@ -243,6 +251,35 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
             }
         }
         return Lazy.from(gen())
+    }
+
+    /** Partition items into `matches` and `others` according to Filter `f`. */
+    partition(f: Filter<T>): Partitioned<T> {
+        let matches: T[] = []
+        let others: T[] = []
+
+        for (const item of this) {
+            if (f(item)) { matches.push(item) }
+            else { others.push(item) }
+        }
+
+        return {matches, others}
+    }
+
+    /** Get the first item. @throws if there are no items. */
+    first(): T {
+        for (let item of this) {
+            return item
+        }
+        throw new Error(`No items.`)
+    }
+
+    /** Get the first item. Returns `defaultValue` if there is no first item. */
+    firstOr<D>(defaultValue: D): T | D {
+        for (let item of this) {
+            return item
+        }
+        return defaultValue
     }
 
     /** Collect all items into an array. */
@@ -415,10 +452,39 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         return LazyAsync.from(gen())
     }
 
+    /** Partition items into `matches` and `others` according to Filter `f`. */
+    async partition(f: Filter<T>): Promise<Partitioned<T>> {
+        let matches: T[] = []
+        let others: T[] = []
+
+        for await (const item of this) {
+            if (f(item)) { matches.push(item) }
+            else { others.push(item) }
+        }
+
+        return {matches, others}
+    }
+
+    /** Get the first item. @throws if there are no items. */
+    async first(): Promise<T> {
+        for await (let item of this) {
+            return item
+        }
+        throw new Error(`No items.`)
+    }
+
+    /** Get the first item. Returns `defaultValue` if there is no first item. */
+    async firstOr<D>(defaultValue: D): Promise<T | D> {
+        for await (let item of this) {
+            return item
+        }
+        return defaultValue
+    }
+
     /** Collect all items into an array. */
     async toArray(): Promise<T[]> {
         let out: T[] = []
-        for await (let item of this.#inner) {
+        for await (let item of this) {
             out.push(item)
         }
         return out
@@ -435,6 +501,12 @@ export type Transform<In,Out> = (i: In) => Out
 
 /** Filters for matches (where boolean is true) */
 export type Filter<T> = (t: T) => boolean
+
+/** The result of partitioning according to a `Filter<T>` */
+export interface Partitioned<T> {
+    matches: T[],
+    others: T[],
+}
 
 
 /**

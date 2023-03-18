@@ -3,7 +3,7 @@ import { delay } from "https://deno.land/std@0.179.0/async/delay.ts";
 
 
 import { lazy, range } from "../mod.ts";
-import { bothTypes, ParallelTracker, Timer } from "./helpers.ts";
+import { ParallelTracker, testBoth, Timer } from "./helpers.ts";
 
 Deno.test("basic", () => {
     let iterable = range({to: 1000})
@@ -208,14 +208,54 @@ Deno.test(function generatorState() {
  * be used more than once (which would result in undefined behavior).
  */
 Deno.test(async function lazyConsumed(t: Deno.TestContext) {
-    for (const [name, lazyIter] of bothTypes()) {
-        await t.step(name, () => {
-            // should work OK:
-            lazyIter.map(it => it * it)
+    // deno-lint-ignore require-await
+    await testBoth(t, range({to: 10}), async (iter) => {
+        // should work OK:
+        iter.map(it => it * it)
 
-            assertThrows(() => {
-                lazyIter.map(it => it * it)
-            })
+        assertThrows(() => {
+            iter.map(it => it * it)
         })
-    }
+    })
+            
 })
+
+Deno.test(async function lazyPartition(t: Deno.TestContext) {
+    await testBoth(t, range({to: 10}), async (iter) => {
+        let parts = await iter.partition(it => it % 2 == 0)
+        assertEquals(parts.matches, [0, 2, 4, 6, 8])
+        assertEquals(parts.others,  [1, 3, 5, 7, 9])
+    })
+})
+
+Deno.test(async function lazyFirst(t: Deno.TestContext) {
+    await testBoth(t, range({from: 42, to: 50}), async (iter) => {
+        let it = await iter.first()
+        assertEquals(it, 42)
+    })
+})
+
+Deno.test(async function lazyFirstThrows(t: Deno.TestContext) {
+    await testBoth(t, range({from: 42, to: 42}), async (iter) => {
+        let thrown: unknown = undefined
+        try {
+            await iter.first()
+        } catch (e) {
+            thrown = e
+        }
+        assert(thrown)
+    })
+})
+
+Deno.test(async function lazyFirstOr(t: Deno.TestContext) {
+    await testBoth(t, range({from: 42, to: 42}), async (iter) => {
+        let it = await iter.firstOr(null)
+        assert(it === null)
+    })
+})
+
+Deno.test(function emptyRange() {
+    let items = range({from: 10, to: 10}).toArray()
+    assertEquals(items, [])
+})
+

@@ -1,6 +1,6 @@
 // deno-lint-ignore-file explicit-module-boundary-types
 
-import { lazy, LazyShared, range } from "../mod.ts";
+import { lazy, LazyShared } from "../mod.ts";
 
 export class ParallelTracker {
     count = 0
@@ -42,9 +42,12 @@ export class Timer {
 }
 
 
-/** Give back both types of lazy iterators, so we can test against them both */
-export function *bothTypes(): Iterable<[name: string, iter: LazyShared<number>]> {
-    let input = range({to: 10}).toArray()
-    yield ["sync", lazy(input)]
-    yield ["async", lazy(input).toAsync() ]
+export async function testBoth<T>(t: Deno.TestContext, data: Iterable<T>, innerTest: (iter: LazyShared<T>) => Promise<unknown>) {
+    let input = [...data]
+    await t.step("sync", async () => {
+        await innerTest(lazy(input))
+    })
+    await t.step("async", async () => {
+        await innerTest(lazy(input).toAsync())
+    })
 }
