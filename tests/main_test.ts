@@ -347,3 +347,11 @@ Deno.test(async function lazyAssociateByThrows(t) {
     })
 })
 
+Deno.test(async function lazyFlatten(t) {
+    let numNums = [[1, 2, 3], [3, 4, 5]]
+    await testBoth(t, numNums, async(iter) => {
+        let nums = await iter.flatten().toArray()
+        assertEquals(nums, [1, 2, 3, 3, 4, 5])
+    })
+})
+

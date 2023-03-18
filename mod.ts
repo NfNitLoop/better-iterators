@@ -184,9 +184,11 @@ export interface LazyShared<T> {
      */
     associateBy<Key>(uniqueKeyFn: Transform<T, Key>): Awaitable<Map<Key, T>>
 
+    /** Flattens a Lazy<Iterable<T>> to a Lazy<T> */
+    flatten(): LazyShared<Flattened<T>>
+
     // TODO:
     // last()
-    // flatten?
 }
 
 export class Lazy<T> implements Iterable<T>, LazyShared<T> {
@@ -351,6 +353,16 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
             map.set(key, item)
         }
         return map
+    }
+
+    /** Flattens a Lazy<Iterable<T>> to a Lazy<T> */
+    flatten(): Lazy<Flattened<T>> {
+        let inner = this.#inner
+        return Lazy.from(function * () {
+            for (const value of inner) {
+                yield * requireIterable(value)
+            }
+        }())
     }
 
     /** Collect all items into an array. */
@@ -608,6 +620,16 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         return map
     }
 
+    /** Flattens a Lazy<Iterable<T>> to a Lazy<T> */
+    flatten(): LazyAsync<Flattened<T>> {
+        let inner = this.#inner
+        return LazyAsync.from(async function * () {
+            for await (const value of inner) {
+                yield * requireIterable(value)
+            }
+        }())
+    }
+
     /** Collect all items into an array. */
     async toArray(): Promise<T[]> {
         let out: T[] = []
@@ -634,6 +656,8 @@ export interface Partitioned<T> {
     matches: T[],
     others: T[],
 }
+
+export type Flattened<T> = T extends Iterable<infer Out> ? Out : never;
 
 
 /**
@@ -695,3 +719,11 @@ const rangeArgsDefaults: Required<RangeArgs> = {
     step: 1,
     inclusive: false,
 } as const
+
+function requireIterable<T>(value: T): Iterable<Flattened<T>> {
+    if (typeof value != "object" || !value || !(Symbol.iterator in value)) {
+        throw new Error(`value is not iterable`)
+    }
+    return value as Iterable<Flattened<T>>
+}
+
