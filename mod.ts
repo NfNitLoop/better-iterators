@@ -450,7 +450,23 @@ export interface RangeArgs {
     /** default: 1 */
     step?: number
 
-    /** default: false */
+    /**
+     * default: false
+     * 
+     * Like ranges in many other languages, a range by default includes its
+     * start, but not its end.  If `true`, this will cause the range to include
+     * its end.
+     * 
+     * ```ts
+     * import { range } from "./mod.ts"
+     * 
+     * // [1, 2]:
+     * console.log(range({from: 1, to: 3}))
+     * 
+     * // [1, 2, 3]:
+     * console.log(range({from: 1, to: 3, inclusive: true}))
+     * ```
+     */
     inclusive?: boolean
 }
 
