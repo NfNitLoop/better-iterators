@@ -30,7 +30,7 @@
  * 
  * Note that iterating a Lazy(Async) will consume its items -- the operation is
  * not repeatable. If you need to iterate multiple times, save your result to
- * an array with {@link Lazy.toArray}
+ * an array with {@link Lazy#toArray}
  * 
  * ```ts
  * import { lazy, range } from "./mod.ts"
@@ -97,11 +97,11 @@
  *     .map(it => it.length)
  * ```
  * 
- * Here, {@link LazyAsync.map} does the least surprising thing and does not 
+ * Here, {@link LazyAsync#map} does the least surprising thing and does not 
  * introduce parallelism implicitly. You've still got serial lazy iteration.
  * 
- * If you DO want parallelism, the {@link LazyAsync.mapPar} and
- * {@link LazyAsync.mapParUnordered} methods let you explicitly opt in at your
+ * If you DO want parallelism, the {@link LazyAsync#mapPar} and
+ * {@link LazyAsync#mapParUnordered} methods let you explicitly opt in at your
  * chosen level of parallelism.
  * 
  * @module
@@ -140,7 +140,7 @@ export interface LazyShared<T> {
     /**
      * Apply `transform` to each element.
      * 
-     * Works like {@link Array.map}.
+     * Works like {@link Array#map}.
      */
     map<Out>(transform: Transform<T, Out>): LazyShared<Out>
 
@@ -186,7 +186,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
     /**
      * Apply `transform` to each element.
      * 
-     * Works like {@link Array.map}.
+     * Works like {@link Array#map}.
      */
     map<Out>(transform: Transform<T, Out>): Lazy<Out> {
         let inner = this.#inner
@@ -260,7 +260,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
 
     /**
      * This lets you directly create an AsyncIterable, but you might prefer
-     * the shorter {@link lazy()] function.
+     * the shorter {@link lazy} function.
      */
     static from<T>(iter: AsyncIterable<T>): LazyAsync<T> {
         return new LazyAsync(iter)
@@ -279,7 +279,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
     /**
      * Apply `transform` to each element.
      * 
-     * Works like {@link Array.map}.
+     * Works like {@link Array#map}.
      */
     map<Out>(transform: Transform<T, Awaitable<Out>>): LazyAsync<Out> {
         let inner = this.#inner
