@@ -12,7 +12,7 @@ export class StatefulPromise<T> implements Promise<T>{
         this.#watch(p)
     }
 
-    get state() { return this.#state }
+    get state(): PromiseState { return this.#state }
 
     async #watch(p: Promise<T>) {
         try {

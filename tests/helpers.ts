@@ -1,3 +1,5 @@
+// deno-lint-ignore-file explicit-module-boundary-types
+
 export class ParallelTracker {
     count = 0
     highest = 0

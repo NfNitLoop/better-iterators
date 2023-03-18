@@ -1,11 +1,14 @@
 {
   "tasks": {
-    "test": "deno test -A --doc "
+    "test": "deno test -A --doc && deno lint"
   },
   "lint": {
     "rules": {
       "exclude": [
         "prefer-const"
+      ],
+      "include": [
+        "explicit-module-boundary-types"
       ]
     }
   }

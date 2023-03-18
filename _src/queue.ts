@@ -7,10 +7,10 @@ export class Queue<T> {
     #start = 0
 
 
-    get size() { return this.#arr.length - this.#start}
-    get isEmpty() { return this.size === 0 }
+    get size(): number { return this.#arr.length - this.#start}
+    get isEmpty(): boolean { return this.size === 0 }
 
-    push(item: T) {
+    push(item: T): void {
         this.#arr.push(item)
         this.#maybeShrink()
     }

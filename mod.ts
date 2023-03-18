@@ -1,8 +1,12 @@
 /**
- * This module provides [Lazy] and [LazyAsync] classes which make it easy
+ *  
+ * Better Iterators
+ * ================
+ * 
+ * This module provides {@link Lazy} and {@link LazyAsync} classes which make it easy
  * to chain together data transformations.
  * 
- * The [lazy] function is the simplest way to get started.
+ * The {@link lazy} function is the simplest way to get started.
  * 
  * ```ts
  * import { lazy, range } from "./mod.ts"
@@ -19,60 +23,68 @@
  * // No iteration has happened yet.
  * // This will trigger it:
  * for (let item of results) { console.log(item) }
- * 
- * 
- * // Note that iterating a Lazy(Async) will consume its items -- the operation is
- * // not repeatable. If you need to iterate multiple times, save your result to
- * // an array with `toArray()`.
- * 
- * let results2 = lazy([1, 2, 3, 4, 5]).map(it => `number: ${it}`)
- * 
- * // Consumes all values:
- * for (let result of results2) { console.log("first pass:", result)}
- * 
- * // Has no more values to yield: (may throw an exception in the future!)
- * for (let result of results2) { console.log("second pass:", result)}
  * ```
  * 
- * [LazyAsync] provides a similar interface to Lazy, but performs operations
- * asynchronously. You can create the lazy pipeline synchronously, but iterating
- * its values requires a for-await loop or an `await results.toArray()`
+ * Lazy Iteration Consumes All Input
+ * ---------------------------------
  * 
- * Compare this version, which tries to do async work inside of Lazy:
+ * Note that iterating a Lazy(Async) will consume its items -- the operation is
+ * not repeatable. If you need to iterate multiple times, save your result to
+ * an array with {@link Lazy.toArray}
+ * 
+ * ```ts
+ * import { lazy, range } from "./mod.ts"
+ *
+ * let results = lazy([1, 2, 3, 4, 5]).map(it => `number: ${it}`)
+ * 
+ * for (let result of results) { console.log("first pass:", result)}
+ * 
+ * // Has no more values to yield: (may throw an exception in the future!)
+ * for (let result of results) { console.log("second pass:", result)}
+ * ```
+ * 
+ * Asynchronous Iteration With Promises (Not Recommended)
+ * ------------------------------------------------------
+ * 
+ * You *could* use a Lazy directly for async work, but it has some problems:
  * 
  * ```ts
  * import { lazy, range } from "./mod.ts"
  * let urls = [
- *     "https://www.google.com/",
- *     "https://www.bing.com/"
+ *     "https://www.example.com/foo",
+ *     "https://www.example.com/bar"
  * ]
  * let lazySizes = lazy(urls)
  *     .map(async (url) => {
  *         let response = await fetch(url)
  *         return await response.text()
  *     })
- *     // The type is now Lazy<Promise<string>> so we're stuck in promises for
- *     // the rest of the lazy chain:
+ *     // The type is now Lazy<Promise<string>> so we're stuck having to deal
+ *     // with  promises for the rest of the lazy chain:
  *     .map(async (bodyPromise) => (await bodyPromise).length)
  *     // and so on...
  * 
- * // `lazySizes` also ends up as a Lazy<Promise<string>>, so we've got to 
- * // await all the items ourselves:
+ * // `lazySizes` also ends up as a `Lazy<Promise<number>>`, so we've got to 
+ * // await all of the items ourselves:
  * let sizes = await Promise.all(lazySizes.toArray())
- * 
- * // This approach might seem to work, but it has unbounded parallelism. If you
- * // have N URLs, .toArray() will create N promises, and the JavaScript runtime
- * // will start making progress on all of them simultaneously.
  * ```
  * 
- * For a simpler API when working with async code, you can convert a Lazy to a
- * LazyAsync, which provides a similar API, but better handles async pipelines:
+ * This approach might seem to work, but it has unbounded parallelism. If you
+ * have N URLs, .toArray() will create N promises, and the JavaScript runtime
+ * will start making progress on all of them simultaneously.
+ * 
+ * 
+ * Lazy Asynchronous Iteration
+ * ---------------------------
+ *  
+ * For a simpler, safer API when working with async code, you can convert a
+ * `Lazy` to a `LazyAsync`:
  * 
  * ```ts
  * import { lazy, range } from "./mod.ts"
  * let urls = [
- *     "https://www.google.com/",
- *     "https://www.bing.com/"
+ *     "https://www.example.com/foo",
+ *     "https://www.example.com/bar"
  * ]
  * let lazySizes = lazy(urls)
  *     .toAsync()
@@ -83,17 +95,14 @@
  *     // here the type is LazyAsync<string> (not Lazy<Promise<string>>)
  *     // so further lazy functions are easier to work with:
  *     .map(it => it.length)
- * 
- * // The async version of toMap() does the least surprising thing and processes
- * // the pipeline serially by default, no unbounded parallelism:
- * let sizes = await lazySizes.toArray()
  * ```
  * 
+ * Here, {@link LazyAsync.map} does the least surprising thing and does not 
+ * introduce parallelism implicitly. You've still got serial lazy iteration.
+ * 
  * If you DO want parallelism, the {@link LazyAsync.mapPar} and
- * {@link LazyAsync.mapParUnordered} methods let you explicitly opt into this
- * behavior with bounded parallelism.
- * 
- * 
+ * {@link LazyAsync.mapParUnordered} methods let you explicitly opt in at your
+ * chosen level of parallelism.
  * 
  * @module
  */
@@ -114,6 +123,49 @@ export function lazy<T>(iter: Iterable<T>|AsyncIterable<T>): Lazy<T>|LazyAsync<T
     return Lazy.from(iter)
 }
 
+// Note: There seems to be a bug in `deno doc` so I'm going to copy/paste the
+// method docs onto the implementors. 😢
+/**
+ * Shared interface for {@link Lazy} and {@link LazyAsync}. 
+ * (Note: `LazyAsync` implements some methods that are not shared.)
+ * 
+ * You shouldn't need to interact with these classes or this interface
+ * directly, though. You can convert to the appropriate one with {@link lazy()}.
+ * 
+ * Operations on lazy iterators consume the underlying iterator. You should not
+ * use them again.
+ */
+export interface LazyShared<T> {
+
+    /**
+     * Apply `transform` to each element.
+     * 
+     * Works like {@link Array.map}.
+     */
+    map<Out>(transform: Transform<T, Out>): LazyShared<Out>
+
+    /** Keeps only items for which `f` is `true`. */
+    filter(f: Filter<T>): LazyShared<T>
+
+
+    /** Limit the iterator to returning at most `count` items. */
+    limit(count: number): LazyShared<T>
+
+    /** Collect all items into an array. */
+    toArray(): Awaitable<Array<T>>
+
+    /** Injects a function to run on each T as it is being iterated. */
+    also(fn: (t: T) => void): LazyShared<T>
+
+    // TODO:
+    // partition()
+    // skip()
+    // first()
+    // last()
+    // associateBy()
+    // groupBy()
+}
+
 export class Lazy<T> implements Iterable<T>, LazyShared<T> {
 
     static from<T>(iter: Iterable<T>): Lazy<T> {
@@ -131,6 +183,11 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         yield * this.#inner
     }
 
+    /**
+     * Apply `transform` to each element.
+     * 
+     * Works like {@link Array.map}.
+     */
     map<Out>(transform: Transform<T, Out>): Lazy<Out> {
         let inner = this.#inner
         let transformIter = function*() {
@@ -141,17 +198,19 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         return Lazy.from(transformIter())
     }
 
-    filter(matcher: Filter<T>): Lazy<T> {
+    /** Keeps only items for which `f` is `true`. */
+    filter(f: Filter<T>): Lazy<T> {
         let inner = this.#inner
         let matchIter = function*() {
             for (let item of inner) {
-                if (!matcher(item)) { continue }
+                if (!f(item)) { continue }
                 yield item
             }
         }
         return Lazy.from(matchIter())
     }
 
+    /** Limit the iterator to returning at most `count` items. */
     limit(count: number): Lazy<T> {
         let inner = this.#inner
         let countIter = function*() {
@@ -164,6 +223,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         return Lazy.from(countIter())
     }
 
+    /** Injects a function to run on each T as it is being iterated. */
     also(fn: (t: T) => void): Lazy<T> {
         let inner = this.#inner
         let gen = function*() {
@@ -175,6 +235,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         return Lazy.from(gen())
     }
 
+    /** Collect all items into an array. */
     toArray(): Array<T> {
         return [... this.#inner]
     }
@@ -193,34 +254,13 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
     }
 }
 
-/** 
- * Just making sure the same methods are in both places.
- * TODO: Can we capture this more strongly-typed?
- * Maybe use conditional types for async/not.
- */
-interface LazyShared<T> {
-    map: unknown
-    filter: unknown
-    limit: unknown
-    toArray: unknown
 
-    /** Injects a function to run on each T as it is being iterated. */
-    also(fn: (t: T) => void): LazyShared<T>
-
-    // TODO:
-    // partition()
-    // skip()
-    // first()
-    // last()
-    // associateBy()
-    // groupBy()
-}
 
 export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
 
     /**
      * This lets you directly create an AsyncIterable, but you might prefer
-     * the shorter [lazy] function.
+     * the shorter {@link lazy()] function.
      */
     static from<T>(iter: AsyncIterable<T>): LazyAsync<T> {
         return new LazyAsync(iter)
@@ -236,6 +276,11 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         yield * this.#inner
     }
 
+    /**
+     * Apply `transform` to each element.
+     * 
+     * Works like {@link Array.map}.
+     */
     map<Out>(transform: Transform<T, Awaitable<Out>>): LazyAsync<Out> {
         let inner = this.#inner
         let gen = async function*() {
@@ -253,7 +298,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
      * Note: This function will ensure that the order of outputs is the same
      * as the order of the inputs they were mapped from. This can introduce 
      * head-of-line blocking, which can slow performance. If you don't need this,
-     * use the TODO method.
+     * use {@link mapParUnordered} instead.
      * 
      */
     mapPar<Out>(max: number, transform: Transform<T, Promise<Out>>): LazyAsync<Out> {
@@ -314,16 +359,18 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         return LazyAsync.from(gen())
     }
 
-    filter(matcher: Filter<T>): LazyAsync<T> {
+    /** Keeps only items for which `f` is `true`. */
+    filter(f: Filter<T>): LazyAsync<T> {
         let inner = this.#inner
         let gen = async function*() {
             for await (let item of inner) {
-                if (matcher(item)) { yield item }
+                if (f(item)) { yield item }
             }
         }
         return LazyAsync.from(gen())
     }
 
+    /** Limit the iterator to returning at most `count` items. */
     limit(count: number): LazyAsync<T> {
         let inner = this.#inner
         let countIter = async function*() {
@@ -336,6 +383,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         return LazyAsync.from(countIter())
     }
 
+    /** Injects a function to run on each T as it is being iterated. */
     also(fn: (t: T) => void): LazyAsync<T> {
         let inner = this.#inner
         let gen = async function*() {
@@ -347,6 +395,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         return LazyAsync.from(gen())
     }
 
+    /** Collect all items into an array. */
     async toArray(): Promise<T[]> {
         let out: T[] = []
         for await (let item of this.#inner) {
