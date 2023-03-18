@@ -259,3 +259,9 @@ Deno.test(function emptyRange() {
     assertEquals(items, [])
 })
 
+Deno.test(async function lazySkip(t: Deno.TestContext) {
+    await testBoth(t, range({to: 10}), async (iter) => {
+        assertEquals(await iter.skip(3).first(), 3)
+    })
+})
+

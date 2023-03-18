@@ -167,9 +167,10 @@ export interface LazyShared<T> {
     /** Get the first item. Returns `defaultValue` if there is no first item. */
     firstOr<D>(defaultValue: D): Awaitable<T|D>
 
+    /** Skip (up to) the first `count` elements */
+    skip(count: number): LazyShared<T>
+
     // TODO:
-    // skip()
-    // first()
     // last()
     // associateBy()
     // groupBy()
@@ -280,6 +281,26 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
             return item
         }
         return defaultValue
+    }
+
+    /** Skip (up to) the first `count` elements */
+    skip(count: number): Lazy<T> {
+        let inner = this.#inner
+        let gen = function * () {
+            let iter = inner[Symbol.iterator]()
+            while (count-- > 0) {
+                let next = iter.next()
+                if (next.done) { return }
+            }
+
+            while (true) {
+                let next = iter.next()
+                if (next.done) { return }
+                yield next.value
+            }
+        }
+
+        return Lazy.from(gen())
     }
 
     /** Collect all items into an array. */
@@ -479,6 +500,26 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
             return item
         }
         return defaultValue
+    }
+
+    /** Skip (up to) the first `count` elements */
+    skip(count: number): LazyAsync<T> {
+        let inner = this.#inner
+        let gen = async function * () {
+            let iter = inner[Symbol.asyncIterator]()
+            while (count-- > 0) {
+                let next = await iter.next()
+                if (next.done) { return }
+            }
+
+            while (true) {
+                let next = await iter.next()
+                if (next.done) { return }
+                yield next.value
+            }
+        }
+
+        return LazyAsync.from(gen())
     }
 
     /** Collect all items into an array. */
