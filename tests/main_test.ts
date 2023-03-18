@@ -1,9 +1,9 @@
-import { assert, assertEquals, assertNotEquals, assertThrows } from "https://deno.land/std@0.179.0/testing/asserts.ts";
+import { assert, assertEquals, assertIsError, assertNotEquals, assertThrows } from "https://deno.land/std@0.179.0/testing/asserts.ts";
 import { delay } from "https://deno.land/std@0.179.0/async/delay.ts";
 
 
 import { lazy, range } from "../mod.ts";
-import { ParallelTracker, testBoth, Timer } from "./helpers.ts";
+import { assertThrowsAsync, ParallelTracker, testBoth, Timer } from "./helpers.ts";
 
 Deno.test("basic", () => {
     let iterable = range({to: 1000})
@@ -262,6 +262,88 @@ Deno.test(function emptyRange() {
 Deno.test(async function lazySkip(t: Deno.TestContext) {
     await testBoth(t, range({to: 10}), async (iter) => {
         assertEquals(await iter.skip(3).first(), 3)
+    })
+})
+
+// Some data we can use for groupBy/associateBy
+// 10 largest cities in the U.S.A.
+const BIGGEST_US_CITIES = [
+    {
+        "name": "New York City",
+        "pop2023": 8992908,
+        "state": "NY"
+    },
+    {
+        "name": "Los Angeles",
+        "pop2023": 3930586,
+        "state": "CA"
+    },
+    {
+        "name": "Chicago",
+        "pop2023": 2761625,
+        "state": "IL"
+    },
+    {
+        "name": "Houston",
+        "pop2023": 2366119,
+        "state": "TX"
+    },
+    {
+        "name": "Phoenix",
+        "pop2023": 1656892,
+        "state": "AZ"
+    },
+    {
+        "name": "Philadelphia",
+        "pop2023": 1627134,
+        "state": "PA"
+    },
+    {
+        "name": "San Antonio",
+        "pop2023": 1466791,
+        "state": "TX"
+    },
+    {
+        "name": "San Diego",
+        "pop2023": 1410791,
+        "state": "CA"
+    },
+    {
+        "name": "Dallas",
+        "pop2023": 1336347,
+        "state": "TX"
+    },
+    {
+        "name": "San Jose",
+        "pop2023": 1033430,
+        "state": "CA"
+    },
+]
+
+Deno.test(async function lazyGroupBy(t) {
+    await testBoth(t, BIGGEST_US_CITIES, async (iter) => {
+        let byState = await iter.groupBy(it => it.state)
+        assertEquals(byState.get("CA")?.length, 3)
+        assertEquals(byState.get("TX")?.length, 3)
+        assertEquals(byState.get("NY")?.length, 1)
+    })
+})
+
+Deno.test(async function lazyAssociateBy(t) {
+    await testBoth(t, BIGGEST_US_CITIES, async (iter) => {
+        let byCity = await iter.associateBy(it => it.name)
+        assertEquals(byCity.get("San Diego")?.state, "CA")
+    })
+})
+
+
+Deno.test(async function lazyAssociateByThrows(t) {
+    await testBoth(t, BIGGEST_US_CITIES, async (iter) => {
+        let thrown = await assertThrowsAsync(async () => {
+            await iter.associateBy(it => it.state)
+        })
+
+        assertIsError(thrown, undefined, "unique key collision")
     })
 })
 

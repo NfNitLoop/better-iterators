@@ -170,14 +170,28 @@ export interface LazyShared<T> {
     /** Skip (up to) the first `count` elements */
     skip(count: number): LazyShared<T>
 
+    /**
+     * Given `keyFn`, use it to extract a key from each item, and create a Map
+     * grouping items by that key.
+     */
+    groupBy<Key>(keyFn: Transform<T, Key>): Awaitable<Map<Key, T[]>>
+
+    /**
+     * Given `uniqueKeyFn`, use it to extract a key from each item, and create a
+     * 1:1 map from that to each item.
+     * 
+     * @throws if duplicates are found for a given key.
+     */
+    associateBy<Key>(uniqueKeyFn: Transform<T, Key>): Awaitable<Map<Key, T>>
+
     // TODO:
     // last()
-    // associateBy()
-    // groupBy()
+    // flatten?
 }
 
 export class Lazy<T> implements Iterable<T>, LazyShared<T> {
 
+    /** Prefer to use the {@link lazy} function. */
     static from<T>(iter: Iterable<T>): Lazy<T> {
         return new Lazy(iter)
     }
@@ -301,6 +315,42 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         }
 
         return Lazy.from(gen())
+    }
+
+    /**
+     * Given `keyFn`, use it to extract a key from each item, and create a Map
+     * grouping items by that key.
+     */
+    groupBy<Key>(keyFn: Transform<T, Key>): Map<Key, T[]> {
+        let map = new Map<Key, T[]>()
+        for (const item of this) {
+            const key = keyFn(item)
+            let group = map.get(key)
+            if (!group) {
+                group = []
+                map.set(key, group)
+            }
+            group.push(item)
+        }
+        return map
+    }
+
+    /**
+     * Given `uniqueKeyFn`, use it to extract a key from each item, and create a
+     * 1:1 map from that to each item.
+     * 
+     * @throws if duplicates are found for a given key.
+     */
+    associateBy<Key>(uniqueKeyFn: Transform<T, Key>): Map<Key, T> {
+        let map = new Map<Key, T>()
+        for (const item of this) {
+            const key = uniqueKeyFn(item)
+            if (map.has(key)) {
+                throw new Error(`unique key collision on ${key}`)
+            }
+            map.set(key, item)
+        }
+        return map
     }
 
     /** Collect all items into an array. */
@@ -520,6 +570,42 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         }
 
         return LazyAsync.from(gen())
+    }
+
+    /**
+     * Given `keyFn`, use it to extract a key from each item, and create a Map
+     * grouping items by that key.
+     */
+    async groupBy<Key>(keyFn: Transform<T, Key>): Promise<Map<Key, T[]>> {
+        let map = new Map<Key, T[]>()
+        for await (const item of this) {
+            const key = keyFn(item)
+            let group = map.get(key)
+            if (!group) {
+                group = []
+                map.set(key, group)
+            }
+            group.push(item)
+        }
+        return map
+    }
+
+    /**
+     * Given `uniqueKeyFn`, use it to extract a key from each item, and create a
+     * 1:1 map from that to each item.
+     * 
+     * @throws if duplicates are found for a given key.
+     */
+    async associateBy<Key>(uniqueKeyFn: Transform<T, Key>): Promise<Map<Key, T>> {
+        let map = new Map<Key, T>()
+        for await (const item of this) {
+            const key = uniqueKeyFn(item)
+            if (map.has(key)) {
+                throw new Error(`unique key collision on ${key}`)
+            }
+            map.set(key, item)
+        }
+        return map
     }
 
     /** Collect all items into an array. */

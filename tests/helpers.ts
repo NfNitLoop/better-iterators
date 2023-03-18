@@ -51,3 +51,21 @@ export async function testBoth<T>(t: Deno.TestContext, data: Iterable<T>, innerT
         await innerTest(lazy(input).toAsync())
     })
 }
+
+
+/** Oddly, Deno's assertThrows doesn't work for async. */
+export async function assertThrowsAsync(fn: () => void): Promise<unknown> {
+    let threw = false
+    let thrown: unknown = undefined
+    try {
+        await fn()
+    } catch (e) {
+        threw = true
+        thrown = e
+    } 
+
+    if (!threw) {
+        throw new Error(`assertThrowsAsync didn't throw`)
+    }
+    return thrown
+}
