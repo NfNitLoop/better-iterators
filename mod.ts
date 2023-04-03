@@ -187,8 +187,36 @@ export interface LazyShared<T> {
     /** Flattens a Lazy<Iterable<T>> to a Lazy<T> */
     flatten(): LazyShared<Flattened<T>>
 
-    // TODO:
-    // last()
+    /** Fold values. See example in {@link LazyShared#sum */
+    fold<I>(initialValue: I, foldFn: (i: I, t: T) => I): Awaitable<I>
+
+    /**
+     * Sums a Lazy iterator of `number`s.
+     * 
+     * This is equivalent to:
+     * ```ts
+     * import { lazy, range } from "./mod.ts"
+     * 
+     * range({to: 10}).fold(0, (a, b) => a + b)
+     * ```
+     * 
+     */
+    sum(): Awaitable<T extends number ? number : never>
+    // Note: Technically, the sum() implementation will convert non-numbers to
+    // a string and then do string concatenation. But it's probably not desired,
+    // and would be more efficient with join(), so we return a `never` type here.
+
+    /**
+     * Averages numbers from the Lazy iterable.
+     * 
+     * Will return NaN if no numbers exist.
+     * 
+     * Note: This algorithm does a simple left-to-right accumulation of the sum,
+     * so can suffer from loss of precision when summing things with vastly
+     * different scales, or working with sums over Number.MAX_SAFE_INTEGER.
+     */
+    avg(): Awaitable<T extends number ? number : never>
+
 }
 
 export class Lazy<T> implements Iterable<T>, LazyShared<T> {
@@ -381,6 +409,26 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
             }
         }
         return LazyAsync.from(gen())
+    }
+
+    fold<I>(initial: I, foldFn: (i: I, t: T) => I): I {
+        let inner = this.#inner
+        let accumulator = initial
+        for (let item of inner) {
+            accumulator = foldFn(accumulator, item)
+        }
+        return accumulator
+    }
+
+    sum(): T extends number ? number : never {
+        let out = this.fold(0, (a, b) => a + (b as number))
+        return out as (T extends number ? number : never)
+    }
+
+    avg(): T extends number ? number : never {
+        let count = 0
+        let sum = this.also( () => { count += 1 } ).sum()
+        return sum / count as (T extends number ? number : never)
     }
 }
 
@@ -637,6 +685,26 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
             out.push(item)
         }
         return out
+    }
+
+    async fold<I>(initial: I, foldFn: (i: I, t: T) => I): Promise<I> {
+        let inner = this.#inner
+        let accumulator = initial
+        for await (let item of inner) {
+            accumulator = foldFn(accumulator, item)
+        }
+        return accumulator
+    }
+
+    async sum(): Promise<T extends number ? number : never> {
+        let out = await this.fold(0, (a, b) => a + (b as number))
+        return out as (T extends number ? number : never)
+    }
+
+    async avg(): Promise<T extends number ? number : never> {
+        let count = 0
+        let sum = await this.also( () => { count += 1 } ).sum()
+        return sum / count as (T extends number ? number : never)
     }
 }
 

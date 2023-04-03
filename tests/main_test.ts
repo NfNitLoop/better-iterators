@@ -355,3 +355,17 @@ Deno.test(async function lazyFlatten(t) {
     })
 })
 
+Deno.test(async function foldAndSum(t) {
+    let data = range({to: 10}).toArray()
+    await testBoth(t, data, async (iter) => {
+        assertEquals(await iter.sum(), 45)
+    })
+})
+
+
+Deno.test(async function avg(t) {
+    let data = range({to: 10}).toArray()
+    await testBoth(t, data, async (iter) => {
+        assertEquals(await iter.avg(), 4.5)
+    })
+})
