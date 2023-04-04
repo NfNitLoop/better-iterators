@@ -104,6 +104,13 @@
  * {@link LazyAsync#mapParUnordered} methods let you explicitly opt in at your
  * chosen level of parallelism.
  * 
+ * Functional Idioms
+ * -----------------
+ * 
+ * You'll find other common Functional Programming idioms on the {@link Lazy}
+ * and {@link LazyAsync} types, like `associateBy`, `groupBy`, `fold`, `sum`, 
+ * `partition`, etc. 
+ * 
  * @module
  */
 
