@@ -175,6 +175,10 @@ interface LazyShared<T> {
      * grouping items by that key.
      */
     groupBy<Key>(keyFn: Transform<T, Key>): Awaitable<Map<Key, T[]>>
+    /**
+     * Adds a `valueFn` to extract that value (instead of T) into a group.
+     */
+    groupBy<Key, Value>(keyFn: Transform<T, Key>, valueFn: Transform<T, Value>): Awaitable<Map<Key, Value[]>>
 
     /**
      * Given `uniqueKeyFn`, use it to extract a key from each item, and create a
@@ -363,8 +367,14 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
      * Given `keyFn`, use it to extract a key from each item, and create a Map
      * grouping items by that key.
      */
-    groupBy<Key>(keyFn: Transform<T, Key>): Map<Key, T[]> {
-        let map = new Map<Key, T[]>()
+    groupBy<Key>(keyFn: Transform<T, Key>): Map<Key, T[]>;
+    /**
+     * Adds a `valueFn` to extract that value (instead of T) into a group.
+     */
+    groupBy<Key, Value>(keyFn: Transform<T, Key>, valueFn: Transform<T, Value>): Map<Key, Value[]>
+    groupBy<Key, Value>(keyFn: Transform<T, Key>, valueFn?: Transform<T, Value|T>): Map<Key, (T|Value)[]> {
+        let map = new Map<Key, (T|Value)[]>()
+        valueFn ??= (t) => t
         for (const item of this) {
             const key = keyFn(item)
             let group = map.get(key)
@@ -372,7 +382,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
                 group = []
                 map.set(key, group)
             }
-            group.push(item)
+            group.push(valueFn(item))
         }
         return map
     }
@@ -657,8 +667,14 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
      * Given `keyFn`, use it to extract a key from each item, and create a Map
      * grouping items by that key.
      */
-    async groupBy<Key>(keyFn: Transform<T, Key>): Promise<Map<Key, T[]>> {
-        let map = new Map<Key, T[]>()
+    async groupBy<Key>(keyFn: Transform<T, Key>): Promise<Map<Key, T[]>>
+    /**
+     * Adds a `valueFn` to extract that value (instead of T) into a group.
+     */
+    async groupBy<Key, Value>(keyFn: Transform<T, Key>, valueFn: Transform<T, Value>): Promise<Map<Key, Value[]>>
+    async groupBy<Key, Value>(keyFn: Transform<T, Key>, valueFn?: Transform<T, Value|T>): Promise<Map<Key, (T|Value)[]>> {
+        let map = new Map<Key, (T|Value)[]>()
+        valueFn ??= (t) => t
         for await (const item of this) {
             const key = keyFn(item)
             let group = map.get(key)
@@ -666,7 +682,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
                 group = []
                 map.set(key, group)
             }
-            group.push(item)
+            group.push(valueFn(item))
         }
         return map
     }

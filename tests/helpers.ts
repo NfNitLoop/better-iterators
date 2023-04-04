@@ -1,5 +1,9 @@
 // deno-lint-ignore-file explicit-module-boundary-types
 
+export { assertEquals, assertIsError, assertThrows } from "https://deno.land/std@0.179.0/testing/asserts.ts";
+export { delay } from "https://deno.land/std@0.179.0/async/delay.ts";
+
+
 import { lazy, Lazy, LazyAsync } from "../mod.ts";
 
 export class ParallelTracker {
@@ -69,3 +73,65 @@ export async function assertThrowsAsync(fn: () => void): Promise<unknown> {
     }
     return thrown
 }
+
+
+export interface City {
+    name: string
+    pop2023: number
+    state: string
+}
+
+// Some data we can use for groupBy/associateBy
+// 10 largest cities in the U.S.A.
+export const BIGGEST_US_CITIES: City[] = [
+    {
+        "name": "New York City",
+        "pop2023": 8992908,
+        "state": "NY"
+    },
+    {
+        "name": "Los Angeles",
+        "pop2023": 3930586,
+        "state": "CA"
+    },
+    {
+        "name": "Chicago",
+        "pop2023": 2761625,
+        "state": "IL"
+    },
+    {
+        "name": "Houston",
+        "pop2023": 2366119,
+        "state": "TX"
+    },
+    {
+        "name": "Phoenix",
+        "pop2023": 1656892,
+        "state": "AZ"
+    },
+    {
+        "name": "Philadelphia",
+        "pop2023": 1627134,
+        "state": "PA"
+    },
+    {
+        "name": "San Antonio",
+        "pop2023": 1466791,
+        "state": "TX"
+    },
+    {
+        "name": "San Diego",
+        "pop2023": 1410791,
+        "state": "CA"
+    },
+    {
+        "name": "Dallas",
+        "pop2023": 1336347,
+        "state": "TX"
+    },
+    {
+        "name": "San Jose",
+        "pop2023": 1033430,
+        "state": "CA"
+    },
+]
