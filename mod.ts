@@ -147,6 +147,8 @@ interface LazyShared<T> {
 
     /** Keeps only items for which `f` is `true`. */
     filter(f: Filter<T>): LazyShared<T>
+    /** Overload to support type narrowing. */
+    filter<S extends T>(f: (t: T) => t is S): LazyShared<S>
 
 
     /** Limit the iterator to returning at most `count` items. */
@@ -277,7 +279,10 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         return Lazy.from(transformIter())
     }
 
+    /** Overload to support type narrowing. */
+    filter<S extends T>(f: (t: T) => t is S): Lazy<S>
     /** Keeps only items for which `f` is `true`. */
+    filter(f: Filter<T>): Lazy<T>
     filter(f: Filter<T>): Lazy<T> {
         let inner = this.#inner
         let matchIter = function*() {
@@ -578,7 +583,10 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         return LazyAsync.from(gen())
     }
 
+    /** Overload to support type narrowing. */
+    filter<S extends T>(f: (t: T) => t is S): LazyAsync<S>
     /** Keeps only items for which `f` is `true`. */
+    filter(f: Filter<T>): LazyAsync<T>
     filter(f: Filter<T>): LazyAsync<T> {
         let inner = this.#inner
         let gen = async function*() {
