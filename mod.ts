@@ -136,7 +136,7 @@ export function lazy<T>(iter: Iterable<T>|AsyncIterable<T>): Lazy<T>|LazyAsync<T
  * Operations on lazy iterators consume the underlying iterator. You should not
  * use them again.
  */
-export interface LazyShared<T> {
+interface LazyShared<T> {
 
     /**
      * Apply `transform` to each element.
@@ -182,7 +182,19 @@ export interface LazyShared<T> {
      * 
      * @throws if duplicates are found for a given key.
      */
-    associateBy<Key>(uniqueKeyFn: Transform<T, Key>): Awaitable<Map<Key, T>>
+    associateBy<Key>(
+        uniqueKeyFn: Transform<T, Key>,
+    ): Awaitable<Map<Key, T>>
+
+    /**
+     * Takes an additional `valueFn` to extract a value from `T`. The returned
+     * map maps from Key to Value. (instead of Key to T)
+     */
+    associateBy<Key, Value>(
+        uniqueKeyFn: Transform<T, Key>,
+        valueFn: Transform<T, Value>
+    ): Awaitable<Map<Key, Value>>
+    
 
     /** Flattens a Lazy<Iterable<T>> to a Lazy<T> */
     flatten(): LazyShared<Flattened<T>>
@@ -364,21 +376,30 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         }
         return map
     }
-
     /**
      * Given `uniqueKeyFn`, use it to extract a key from each item, and create a
      * 1:1 map from that to each item.
      * 
      * @throws if duplicates are found for a given key.
      */
-    associateBy<Key>(uniqueKeyFn: Transform<T, Key>): Map<Key, T> {
-        let map = new Map<Key, T>()
+    associateBy<Key>(uniqueKeyFn: Transform<T, Key>, ): Map<Key, T>;
+    /**
+     * Takes an additional `valueFn` to extract a value from `T`. The returned
+     * map maps from Key to Value. (instead of Key to T)
+     */
+    associateBy<Key, Value>( uniqueKeyFn: Transform<T, Key>, valueFn: Transform<T, Value> ): Map<Key, Value>;
+    associateBy<Key, Value>(
+        uniqueKeyFn: Transform<T, Key>,
+        valueFn?: Transform<T, Value|T>
+    ): Map<Key, T|Value> {
+        let map = new Map<Key, T|Value>()
+        valueFn ??= (t) => t
         for (const item of this) {
             const key = uniqueKeyFn(item)
             if (map.has(key)) {
                 throw new Error(`unique key collision on ${key}`)
             }
-            map.set(key, item)
+            map.set(key, valueFn(item))
         }
         return map
     }
@@ -656,14 +677,24 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
      * 
      * @throws if duplicates are found for a given key.
      */
-    async associateBy<Key>(uniqueKeyFn: Transform<T, Key>): Promise<Map<Key, T>> {
-        let map = new Map<Key, T>()
+    associateBy<Key>( uniqueKeyFn: Transform<T, Key>, ): Promise<Map<Key, T>>;
+    /**
+     * Takes an additional `valueFn` to extract a value from `T`. The returned
+     * map maps from Key to Value. (instead of Key to T)
+     */
+    associateBy<Key, Value>( uniqueKeyFn: Transform<T, Key>, valueFn: Transform<T, Value> ): Promise<Map<Key, Value>>;
+    async associateBy<Key, Value>(
+        uniqueKeyFn: Transform<T, Key>,
+        valueFn?: Transform<T, T|Value>
+    ): Promise<Map<Key, T|Value>> {
+        let map = new Map<Key, T|Value>()
+        valueFn ??= (t) => t
         for await (const item of this) {
             const key = uniqueKeyFn(item)
             if (map.has(key)) {
                 throw new Error(`unique key collision on ${key}`)
             }
-            map.set(key, item)
+            map.set(key, valueFn(item))
         }
         return map
     }

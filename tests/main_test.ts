@@ -265,9 +265,15 @@ Deno.test(async function lazySkip(t: Deno.TestContext) {
     })
 })
 
+interface City {
+    name: string
+    pop2023: number
+    state: string
+}
+
 // Some data we can use for groupBy/associateBy
 // 10 largest cities in the U.S.A.
-const BIGGEST_US_CITIES = [
+const BIGGEST_US_CITIES: City[] = [
     {
         "name": "New York City",
         "pop2023": 8992908,
@@ -329,23 +335,59 @@ Deno.test(async function lazyGroupBy(t) {
     })
 })
 
-Deno.test(async function lazyAssociateBy(t) {
-    await testBoth(t, BIGGEST_US_CITIES, async (iter) => {
-        let byCity = await iter.associateBy(it => it.name)
-        assertEquals(byCity.get("San Diego")?.state, "CA")
-    })
+
+// We can't testBoth() for associateBy(), because TypeScript can't unify the
+// overloaded method signatures. 
+// For example, see: <https://github.com/microsoft/TypeScript/pull/29011>
+// This is fine. No one should need to work w/ a union of those types in practice.
+// This also forces us to check the (relatively complicated) types for the a/sync
+// versions separately.
+// Note: We should NOT rely on the LazyShared interface, because
+// the interface actually exposed by Lazy & LazySync may slightly differ. 
+Deno.test(function associateBySync() {
+    let iter = lazy(BIGGEST_US_CITIES)
+    let byCity = iter.associateBy(it => it.name)
+    assertEquals(byCity.get("San Diego")?.state, "CA")
+})
+
+Deno.test(async function associateByAsync() {
+    let iter = lazy(BIGGEST_US_CITIES).toAsync()
+    let byCity = await iter.associateBy(it => it.name)
+    assertEquals(byCity.get("San Diego")?.state, "CA")
 })
 
 
-Deno.test(async function lazyAssociateByThrows(t) {
-    await testBoth(t, BIGGEST_US_CITIES, async (iter) => {
-        let thrown = await assertThrowsAsync(async () => {
-            await iter.associateBy(it => it.state)
-        })
-
-        assertIsError(thrown, undefined, "unique key collision")
+Deno.test(function associateByThrowsSync() {
+    let iter = lazy(BIGGEST_US_CITIES)
+    let thrown = assertThrows(() => {
+        iter.associateBy(it => it.state)
     })
+
+    assertIsError(thrown, undefined, "unique key collision")
 })
+
+Deno.test(async function associateByThrowsAsync() {
+    let iter = lazy(BIGGEST_US_CITIES).toAsync()
+    let thrown = await assertThrowsAsync(async () => {
+        await iter.associateBy(it => it.state)
+    })
+
+    assertIsError(thrown, undefined, "unique key collision")
+})
+
+
+Deno.test(function associateByWithValuesSync() {
+    let iter = lazy(BIGGEST_US_CITIES)
+    let statesByCity = iter.associateBy(it => it.name, it => it.state)
+    assertEquals(statesByCity.get("San Diego"), "CA")
+})
+
+Deno.test(async function associateByWithValuesAsync() {
+    let iter = lazy(BIGGEST_US_CITIES).toAsync()
+    let statesByCity = await iter.associateBy(it => it.name, it => it.state)
+    assertEquals(statesByCity.get("San Diego"), "CA")
+})
+
 
 Deno.test(async function lazyFlatten(t) {
     let numNums = [[1, 2, 3], [3, 4, 5]]

@@ -1,6 +1,6 @@
 // deno-lint-ignore-file explicit-module-boundary-types
 
-import { lazy, LazyShared } from "../mod.ts";
+import { lazy, Lazy, LazyAsync } from "../mod.ts";
 
 export class ParallelTracker {
     count = 0
@@ -42,7 +42,7 @@ export class Timer {
 }
 
 
-export async function testBoth<T>(t: Deno.TestContext, data: Iterable<T>, innerTest: (iter: LazyShared<T>) => Promise<unknown>) {
+export async function testBoth<T>(t: Deno.TestContext, data: Iterable<T>, innerTest: (iter: Lazy<T>|LazyAsync<T>) => Promise<unknown>) {
     let input = [...data]
     await t.step("sync", async () => {
         await innerTest(lazy(input))
