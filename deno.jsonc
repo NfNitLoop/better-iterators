@@ -11,5 +11,15 @@
         "explicit-module-boundary-types"
       ]
     }
+  },
+  "test": {
+    "files": {
+      "exclude": [
+        // test --doc tests my README.md files too. But the README has a code example
+        // of importing the mod from deno.land, so I was getting circular dependencies
+        // captured into my deno.lock. 
+        "README.md"
+      ]
+    }
   }
 }

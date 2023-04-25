@@ -1,6 +1,6 @@
 // deno-lint-ignore-file explicit-module-boundary-types
 
-export { assertEquals, assertIsError, assertThrows } from "https://deno.land/std@0.179.0/testing/asserts.ts";
+export { assert, assertEquals, assertIsError, assertThrows } from "https://deno.land/std@0.179.0/testing/asserts.ts";
 export { delay } from "https://deno.land/std@0.179.0/async/delay.ts";
 
 

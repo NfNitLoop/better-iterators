@@ -114,6 +114,7 @@
  * @module
  */
 
+import { Peekable, PeekableAsync } from "./_src/peek.ts";
 import { stateful, StatefulPromise } from "./_src/promise.ts";
 import { Queue } from "./_src/queue.ts";
 
@@ -242,6 +243,11 @@ interface LazyShared<T> {
      */
     avg(): Awaitable<T extends number ? number : never>
 
+    /**
+     * Get a "peekable" iterator, which lets you peek() at the next item without
+     * removing it from the iterator.
+     */
+    peekable(): Peekable<T> | PeekableAsync<T>
 }
 
 export class Lazy<T> implements Iterable<T>, LazyShared<T> {
@@ -472,6 +478,15 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         let count = 0
         let sum = this.also( () => { count += 1 } ).sum()
         return sum / count as (T extends number ? number : never)
+    }
+
+    /**
+     * Get a "peekable" iterator, which lets you peek() at the next item without
+     * removing it from the iterator.
+     */
+    peekable(): Peekable<T> {
+        let inner = this.#inner
+        return Peekable.from(inner)
     }
 }
 
@@ -767,6 +782,15 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         let count = 0
         let sum = await this.also( () => { count += 1 } ).sum()
         return sum / count as (T extends number ? number : never)
+    }
+    
+    /**
+     * Get a "peekable" iterator, which lets you peek() at the next item without
+     * removing it from the iterator.
+     */
+    peekable(): PeekableAsync<T> {
+        let inner = this.#inner
+        return PeekableAsync.from(inner)
     }
 }
 
