@@ -248,6 +248,14 @@ interface LazyShared<T> {
      * removing it from the iterator.
      */
     peekable(): Peekable<T> | PeekableAsync<T>
+
+    /** 
+     * Iterate by chunks of a given size formed from the underlying Iterator.
+     * 
+     * Each chunk will be exactly `size` until the last chunk, which may be
+     * from 1-size items long.
+     */
+    chunked(size: number): LazyShared<T[]>
 }
 
 export class Lazy<T> implements Iterable<T>, LazyShared<T> {
@@ -487,6 +495,30 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
     peekable(): Peekable<T> {
         let inner = this.#inner
         return Peekable.from(inner)
+    }
+
+    /** 
+     * Iterate by chunks of a given size formed from the underlying Iterator.
+     * 
+     * Each chunk will be exactly `size` until the last chunk, which may be
+     * from 1-size items long.
+     */
+    chunked(size: number): Lazy<T[]> {
+        let inner = this.#inner
+        let gen = function* generator() {
+            let out: T[] = []
+            for (const item of inner) {
+                out.push(item)
+                if (out.length >= size) {
+                    yield out
+                    out = []
+                }
+            }
+            if (out.length > 0) {
+                yield out
+            }
+        }
+        return lazy(gen())
     }
 }
 
@@ -792,6 +824,31 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         let inner = this.#inner
         return PeekableAsync.from(inner)
     }
+
+    /** 
+     * Iterate by chunks of a given size formed from the underlying Iterator.
+     * 
+     * Each chunk will be exactly `size` until the last chunk, which may be
+     * from 1-size items long.
+     */
+    chunked(size: number): LazyAsync<T[]> {
+        let inner = this.#inner
+        let gen = async function* generator() {
+            let out: T[] = []
+            for await (const item of inner) {
+                out.push(item)
+                if (out.length >= size) {
+                    yield out
+                    out = []
+                }
+            }
+            if (out.length > 0) {
+                yield out
+            }
+        }
+        return lazy(gen())
+    }
+    
 }
 
 /**
