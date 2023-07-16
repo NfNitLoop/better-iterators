@@ -286,3 +286,45 @@ Deno.test(async function avg(t) {
         assertEquals(await iter.avg(), 4.5)
     })
 })
+
+Deno.test(async function joinToString(t) {
+    const input = () => range({from: 14, to: 21})
+    await testBoth(t, input, async (iter) => {
+        let result = await iter
+            .map(num => `${num}: ${fizzBuzz(num)}`)
+            .joinToString()
+        assertEquals(result, "14: 14, 15: FizzBuzz, 16: 16, 17: 17, 18: Fizz, 19: 19, 20: Buzz")
+    })
+})
+
+Deno.test(async function joinToStringWithSep(t) {
+    const input = () => range({from: 14, to: 21})
+    await testBoth(t, input, async (iter) => {
+        let result = await iter
+            .map(num => `${num}: ${fizzBuzz(num)}`)
+            .joinToString({sep: "X"})
+        assertEquals(result, "14: 14X15: FizzBuzzX16: 16X17: 17X18: FizzX19: 19X20: Buzz")
+    })
+})
+
+Deno.test(async function joinToStringEmpty(t) {
+    await testBoth(t, [], async (iter) => {
+        let result = await iter
+            .joinToString()
+
+        assertEquals(result, "")
+    })
+})
+
+function fizzBuzz(num: number) {
+    if (num % 15 == 0) {
+        return "FizzBuzz"
+    }
+    if (num % 5 == 0) {
+        return "Buzz"
+    }
+    if (num % 3 == 0) {
+        return "Fizz"
+    }
+    return `${num}`
+}

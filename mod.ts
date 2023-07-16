@@ -216,6 +216,9 @@ interface LazyShared<T> {
     /** Flattens a Lazy<Iterable<T>> to a Lazy<T> */
     flatten(): LazyShared<Flattened<T>>
 
+    /** Joins multiple string values into a string. */
+    joinToString(args?: JoinToStringArgs): Awaitable<JoinedToString<T>>
+
     /** Fold values. See example in {@link LazyShared#sum} */
     fold<I>(initialValue: I, foldFn: (i: I, t: T) => I): Awaitable<I>
 
@@ -467,6 +470,12 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
                 yield * requireIterable(value)
             }
         }())
+    }
+
+    /** Joins multiple string values into a string. */
+    joinToString(args?: JoinToStringArgs): JoinedToString<T> {
+        const sep = args?.sep ?? ", "
+        return this.toArray().join(sep) as JoinedToString<T>
     }
 
     /** Collect all items into an array. */
@@ -874,6 +883,12 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         }())
     }
 
+    /** Joins multiple string values into a string. */
+    async joinToString(args?: JoinToStringArgs): Promise<JoinedToString<T>> {
+        const sep = args?.sep ?? ", "
+        return (await this.toArray()).join(sep) as JoinedToString<T>
+    }
+
     /** Collect all items into an array. */
     async toArray(): Promise<T[]> {
         let out: T[] = []
@@ -1069,6 +1084,18 @@ export interface RangeArgs {
      */
     inclusive?: boolean
 }
+
+export interface JoinToStringArgs {
+    /** The separator to use. Default: ", " */
+    sep?: string
+
+    // Can add more join options here if people want. 
+}
+
+/**
+ * Only `string` values can be joined to string
+ */
+export type JoinedToString<T> = T extends string ? string : never
 
 const rangeArgsDefaults: Required<RangeArgs> = {
     from: 0,
