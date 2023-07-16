@@ -46,13 +46,19 @@ export class Timer {
 }
 
 
-export async function testBoth<T>(t: Deno.TestContext, data: Iterable<T>, innerTest: (iter: Lazy<T>|LazyAsync<T>) => Promise<unknown>) {
-    let input = [...data]
+export async function testBoth<T>(t: Deno.TestContext, data: Iterable<T> | (() => Iterable<T>), innerTest: (iter: Lazy<T>|LazyAsync<T>) => Promise<unknown>) {
+    let input: () => Iterable<T>
+    if (Symbol.iterator in data) {
+        const inputValues = [...data]
+        input = () => inputValues
+    } else {
+        input = data
+    }
     await t.step("sync", async () => {
-        await innerTest(lazy(input))
+        await innerTest(lazy(input()))
     })
     await t.step("async", async () => {
-        await innerTest(lazy(input).toAsync())
+        await innerTest(lazy(input()).toAsync())
     })
 }
 

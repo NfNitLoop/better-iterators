@@ -46,7 +46,7 @@
  * Asynchronous Iteration With Promises (Not Recommended)
  * ------------------------------------------------------
  * 
- * You *could* use a Lazy directly for async work, but it has some problems:
+ * Other iterator libraries show examples of parallel/async iteration like this:
  * 
  * ```ts
  * import { lazy, range } from "./mod.ts"
@@ -73,12 +73,15 @@
  * have N URLs, `.toArray()` will create N promises, and the JavaScript runtime
  * will start making progress on all of them simultaneously.
  * 
+ * That might work for small workloads, but network and memory resources are not
+ * unbounded, so you may end up with worse, or less reliable performance.
+ * 
  * 
  * Lazy Asynchronous Iteration
  * ---------------------------
  *  
- * For a simpler, safer API when working with async code, you can convert a
- * `Lazy` to a `LazyAsync`:
+ * Better Iterators provides a simpler, safer API when working with async code:
+ * You can convert a `Lazy` to a `LazyAsync`:
  * 
  * ```ts
  * import { lazy, range } from "./mod.ts"
@@ -213,7 +216,7 @@ interface LazyShared<T> {
     /** Flattens a Lazy<Iterable<T>> to a Lazy<T> */
     flatten(): LazyShared<Flattened<T>>
 
-    /** Fold values. See example in {@link LazyShared#sum */
+    /** Fold values. See example in {@link LazyShared#sum} */
     fold<I>(initialValue: I, foldFn: (i: I, t: T) => I): Awaitable<I>
 
     /**
@@ -256,6 +259,22 @@ interface LazyShared<T> {
      * from 1-size items long.
      */
     chunked(size: number): LazyShared<T[]>
+
+    /**
+     * Repeat items `count` times.
+     * 
+     * ```ts
+     * import { range } from "./mod.ts"
+     * 
+     * let nine = range({to: 3}).repeat(3).sum()
+     * ```
+     */
+    repeat(count: number): LazyShared<T>
+
+    /**
+     * Like {@link #repeat}, but repeates forever.
+     */
+    loop(): LazyShared<T>
 }
 
 export class Lazy<T> implements Iterable<T>, LazyShared<T> {
@@ -516,6 +535,66 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
             }
             if (out.length > 0) {
                 yield out
+            }
+        }
+        return lazy(gen())
+    }
+
+    /**
+     * Repeat items `count` times.
+     * 
+     * ```ts
+     * import { range } from "./mod.ts"
+     * 
+     * let nine = range({to: 3}).repeat(3).sum()
+     * ```
+     */
+    repeat(count: number): Lazy<T> {
+        if (count < 0) {
+            throw new Error(`count may not be < 0. Was: ${count}`)
+        }
+
+        if (count == 1) {
+            return this
+        }
+
+        let inner = this.#inner
+        const gen = function* generator() {
+            const arr: T[] = []
+            for (const item of inner) {
+                yield item
+                arr.push(item)
+            }
+
+            if (arr.length == 0) {
+                return
+            }
+
+            for (let i = 1; i < count; i++) {
+                yield * arr
+            }
+        }
+        return lazy(gen())
+    }
+
+    /**
+     * Like {@link #repeat}, but repeates forever.
+     */
+    loop(): Lazy<T> {
+        let inner = this.#inner
+        const gen = function* generator() {
+            const arr: T[] = []
+            for (const item of inner) {
+                yield item
+                arr.push(item)
+            }
+
+            if (arr.length == 0) {
+                return
+            }
+
+            while (true) {
+                yield * arr
             }
         }
         return lazy(gen())
@@ -856,7 +935,66 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         }
         return lazy(gen())
     }
-    
+
+    /**
+     * Repeat items `count` times.
+     * 
+     * ```ts
+     * import { range } from "./mod.ts"
+     * 
+     * let nine = range({to: 3}).repeat(3).sum()
+     * ```
+     */
+    repeat(count: number): LazyAsync<T> {
+        if (count < 0) {
+            throw new Error(`count may not be < 0. Was: ${count}`)
+        }
+
+        if (count == 1) {
+            return this
+        }
+
+        let inner = this.#inner
+        const gen = async function* generator() {
+            const arr: T[] = []
+            for await (const item of inner) {
+                yield item
+                arr.push(item)
+            }
+
+            if (arr.length == 0) {
+                return
+            }
+
+            for (let i = 1; i < count; i++) {
+                yield * arr
+            }
+        }
+        return lazy(gen())
+    }
+
+    /**
+     * Like {@link #repeat}, but repeates forever.
+     */
+    loop(): LazyAsync<T> {
+        let inner = this.#inner
+        const gen = async function* generator() {
+            const arr: T[] = []
+            for await (const item of inner) {
+                yield item
+                arr.push(item)
+            }
+
+            if (arr.length == 0) {
+                return
+            }
+
+            while (true) {
+                yield * arr
+            }
+        }
+        return lazy(gen())
+    }
 }
 
 /**
