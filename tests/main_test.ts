@@ -96,9 +96,12 @@ Deno.test(async function asyncViaLazyAsync() {
 Deno.test(async function asyncLazyParallel() {
     let zoomie = range({to: 100})
         .toAsync()
-        .mapPar(1000, async (input) => {
-            await delay(50)
-            return input*input
+        .map({
+            parallel: 1000, 
+            async mapper(input) {
+                await delay(50)
+                return input*input
+            },
         })
 
     let timer = new Timer()
@@ -117,12 +120,15 @@ Deno.test(async function asyncLazyMaxParallelism() {
     let tracker = new ParallelTracker()
     let zoomie = range({to: 100})
         .toAsync()
-        .mapPar(maxParallel, async (input) => {
-            tracker.start()
-            // trying to control for parallelism for async tasks:
-            await delay(5)
-            tracker.end()
-            return input*input
+        .map({
+            parallel: maxParallel,
+            async mapper(input) {
+                tracker.start()
+                // trying to control for parallelism for async tasks:
+                await delay(5)
+                tracker.end()
+                return input*input
+            },
         })
 
     // No iteration yet:
@@ -148,12 +154,16 @@ Deno.test(async function unorderedParallelism() {
     let tracker = new ParallelTracker()
     let zoomie = range({to: 10})
         .toAsync()
-        .mapParUnordered(maxParallel, async (input) => {
-            tracker.start()
-            // trying to control for parallelism for async tasks:
-            await delay(Math.random() * 50)
-            tracker.end()
-            return input*input
+        .map({
+            parallel: maxParallel,
+            ordered: false,
+            async mapper (input) {
+                tracker.start()
+                // trying to control for parallelism for async tasks:
+                await delay(Math.random() * 50)
+                tracker.end()
+                return input*input
+            },
         })
 
     // No iteration yet:
@@ -209,6 +219,8 @@ Deno.test(function generatorState() {
 Deno.test(async function lazyConsumed(t: Deno.TestContext) {
     // deno-lint-ignore require-await
     await testBoth(t, range({to: 10}), async (iter) => {
+
+        
         // should work OK:
         iter.map(it => it * it)
 

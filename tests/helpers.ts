@@ -4,7 +4,7 @@ export { assert, assertEquals, assertIsError, assertThrows } from "https://deno.
 export { delay } from "https://deno.land/std@0.179.0/async/delay.ts";
 
 
-import { lazy, Lazy, LazyAsync } from "../mod.ts";
+import { lazy, LazyShared } from "../mod.ts";
 
 export class ParallelTracker {
     count = 0
@@ -46,7 +46,7 @@ export class Timer {
 }
 
 
-export async function testBoth<T>(t: Deno.TestContext, data: Iterable<T> | (() => Iterable<T>), innerTest: (iter: Lazy<T>|LazyAsync<T>) => Promise<unknown>) {
+export async function testBoth<T>(t: Deno.TestContext, data: Iterable<T> | (() => Iterable<T>), innerTest: (iter: LazyShared<T>) => Promise<unknown>) {
     let input: () => Iterable<T>
     if (Symbol.iterator in data) {
         const inputValues = [...data]
