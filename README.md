@@ -10,7 +10,7 @@ make more tools available on iterables.
 Better Iterators aims to bring those tools to TypeScript.
 
 For example code and API docs, see:  
-<https://deno.land/x/better_iterators/mod.ts>
+<https://jsr.io/@nfnitloop/better-iterators>
 
 
 Features / Goals
@@ -30,16 +30,13 @@ Features / Goals
 Installation
 ------------
 
-### Deno ###
+The [JSR page](https://jsr.io/@nfnitloop/better-iterators) has 
+instructions for installing for Deno, npm, yarn, pnpm, and bun.
 
-```ts
-import { lazy } from "https://deno.land/x/better_iterators/mod.ts"
-```
+This package is also published to and installable via:
+ * <https://deno.land/x/better_iterators/mod.ts>
+ * <https://www.npmjs.com/package/better-iterators>
 
-### Node ### 
-
-TODO: Let me know (open an issue) if you'd like to use this from node, and I'll
-publish it to npm. 
 
 
 Other Iterator Libraries

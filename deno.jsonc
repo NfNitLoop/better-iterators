@@ -1,4 +1,12 @@
 {
+  "name": "@nfnitloop/better-iterators",
+  "version": "1.5.0",
+  "exports": "./mod.ts",
+  "publish": {
+    "exclude": [
+      "tests/**"
+    ]
+  },
   "tasks": {
     "test": "deno test -A --doc && deno lint"
   },
