@@ -15,15 +15,12 @@ const FOOS_AND_BARS: (Foo|Bar)[] = [
     {bar: "earthlings."},
 ]
 
-function isFoo(obj: Foo|Bar): obj is Foo {
-    return "foo" in obj
-}
-
 /** Test that filter(isFoo) narrows the return type. */
 // Again, this doesn't work well w/ union types, so separating for sync/async.
 Deno.test(function filterNarrowingSync() {
     let iter = lazy(FOOS_AND_BARS)
-    let result = iter.filter(isFoo)
+    // In TypeScript 5.5 (Deno 1.45), we no longer need separate type-narrowing functions:
+    let result = iter.filter(it => "foo" in it)
         // This bit is possible due to type narrowing:
         .map(it => it.foo)
         .toArray()
@@ -33,7 +30,8 @@ Deno.test(function filterNarrowingSync() {
 /** Test that filter(isFoo) narrows the return type. */
 Deno.test(async function filterNarrowingAsync() {
     let iter = lazy(FOOS_AND_BARS).toAsync()
-    let result = await iter.filter(isFoo)
+    // In TypeScript 5.5 (Deno 1.45), we no longer need separate type-narrowing functions:
+    let result = await iter.filter(it => "foo" in it)
         // This bit is possible due to type narrowing:
         .map(it => it.foo)
         .toArray()
