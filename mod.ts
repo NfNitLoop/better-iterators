@@ -167,7 +167,7 @@ export interface LazyShared<T> {
      * 
      * Works like {@link Array#map}.
      */
-    map<Out>(transform: Transform<T, Out>): LazyShared<Out>
+    map<Out>(transform: (t: T) => Out): LazyShared<Out>
 
     /**
      * Set up parallel transformation of a lazy iterable.
@@ -207,11 +207,11 @@ export interface LazyShared<T> {
      * Given `keyFn`, use it to extract a key from each item, and create a Map
      * grouping items by that key.
      */
-    groupBy<Key>(keyFn: Transform<T, Key>): Awaitable<Map<Key, T[]>>
+    groupBy<Key>(keyFn: (t: T) => Key): Awaitable<Map<Key, T[]>>
     /**
      * Adds a `valueFn` to extract that value (instead of T) into a group.
      */
-    groupBy<Key, Value>(keyFn: Transform<T, Key>, valueFn: Transform<T, Value>): Awaitable<Map<Key, Value[]>>
+    groupBy<Key, Value>(keyFn: (t: T) => Key, valueFn: (t: T) => Value): Awaitable<Map<Key, Value[]>>
 
     /**
      * Given `uniqueKeyFn`, use it to extract a key from each item, and create a
@@ -220,7 +220,7 @@ export interface LazyShared<T> {
      * @throws if duplicates are found for a given key.
      */
     associateBy<Key>(
-        uniqueKeyFn: Transform<T, Key>,
+        uniqueKeyFn: (t: T) => Key,
     ): Awaitable<Map<Key, T>>
 
     /**
@@ -228,8 +228,8 @@ export interface LazyShared<T> {
      * map maps from Key to Value. (instead of Key to T)
      */
     associateBy<Key, Value>(
-        uniqueKeyFn: Transform<T, Key>,
-        valueFn: Transform<T, Value>
+        uniqueKeyFn: (t: T) => Key,
+        valueFn:(t: T) => Value
     ): Awaitable<Map<Key, Value>>
     
 
@@ -347,7 +347,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
      * 
      * Works like {@link Array#map}.
      */
-    map<Out>(transform: Transform<T, Out>): Lazy<Out> {
+    map<Out>(transform: (t: T) => Out): Lazy<Out> {
         return this.#simpleMap(transform)
     }
 
@@ -358,7 +358,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
       return this.toAsync().parallel(parallelism, options)
     }
 
-    #simpleMap<Out>(transform: Transform<T, Out>): Lazy<Out> {
+    #simpleMap<Out>(transform: (t: T) => Out): Lazy<Out> {
         let inner = this.#inner
         let transformIter = function*() {
             for (let item of inner) {
@@ -461,12 +461,12 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
      * Given `keyFn`, use it to extract a key from each item, and create a Map
      * grouping items by that key.
      */
-    groupBy<Key>(keyFn: Transform<T, Key>): Map<Key, T[]>;
+    groupBy<Key>(keyFn: (t: T) => Key): Map<Key, T[]>;
     /**
      * Adds a `valueFn` to extract that value (instead of T) into a group.
      */
-    groupBy<Key, Value>(keyFn: Transform<T, Key>, valueFn: Transform<T, Value>): Map<Key, Value[]>
-    groupBy<Key, Value>(keyFn: Transform<T, Key>, valueFn?: Transform<T, Value|T>): Map<Key, (T|Value)[]> {
+    groupBy<Key, Value>(keyFn: (t: T) => Key, valueFn:(t: T) => Value): Map<Key, Value[]>
+    groupBy<Key, Value>(keyFn: (t: T) => Key, valueFn?: (t: T) => (Value|T)): Map<Key, (T|Value)[]> {
         let map = new Map<Key, (T|Value)[]>()
         valueFn ??= (t) => t
         for (const item of this) {
@@ -486,15 +486,15 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
      * 
      * @throws if duplicates are found for a given key.
      */
-    associateBy<Key>(uniqueKeyFn: Transform<T, Key>, ): Map<Key, T>;
+    associateBy<Key>(uniqueKeyFn: (t: T) => Key, ): Map<Key, T>;
     /**
      * Takes an additional `valueFn` to extract a value from `T`. The returned
      * map maps from Key to Value. (instead of Key to T)
      */
-    associateBy<Key, Value>( uniqueKeyFn: Transform<T, Key>, valueFn: Transform<T, Value> ): Map<Key, Value>;
+    associateBy<Key, Value>( uniqueKeyFn: (t: T) => Key, valueFn:(t: T) => Value ): Map<Key, Value>;
     associateBy<Key, Value>(
-        uniqueKeyFn: Transform<T, Key>,
-        valueFn?: Transform<T, Value|T>
+        uniqueKeyFn: (t: T) => Key,
+        valueFn?: (t: T) => (Value|T)
     ): Map<Key, T|Value> {
         let map = new Map<Key, T|Value>()
         valueFn ??= (t) => t
@@ -693,11 +693,11 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
      * 
      * Works like {@link Array#map}.
      */
-    map<Out>(transform: Transform<T, Awaitable<Out>>): LazyAsync<Out> {
+    map<Out>(transform: (t: T) => Awaitable<Out>): LazyAsync<Out> {
         return this.#simpleMap(transform)
     }
 
-    #simpleMap<Out>(transform: Transform<T, Awaitable<Out>>): LazyAsync<Out> {
+    #simpleMap<Out>(transform: (t: T) => Awaitable<Out>): LazyAsync<Out> {
         let inner = this.#inner
         let gen = async function*() {
             for await (let item of inner) {
@@ -724,7 +724,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
     }
 
 
-    #mapPar<Out>(max: number, transform: Transform<T, Promise<Out>>): LazyAsync<Out> {
+    #mapPar<Out>(max: number, transform: (t: T) => Promise<Out>): LazyAsync<Out> {
             let inner = this.#inner
         let gen = async function*() {
 
@@ -744,7 +744,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         return LazyAsync.from(gen())
     }
 
-    #mapParUnordered<Out>(max: number, transform: Transform<T, Promise<Out>>): LazyAsync<Out> {
+    #mapParUnordered<Out>(max: number, transform: (t: T) => Promise<Out>): LazyAsync<Out> {
         if (max <= 0) { throw new Error("max must be > 0")}
         let inner = this.#inner
         let gen = async function*() {
@@ -878,12 +878,12 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
      * Given `keyFn`, use it to extract a key from each item, and create a Map
      * grouping items by that key.
      */
-    async groupBy<Key>(keyFn: Transform<T, Key>): Promise<Map<Key, T[]>>
+    async groupBy<Key>(keyFn: (t: T) => Key): Promise<Map<Key, T[]>>
     /**
      * Adds a `valueFn` to extract that value (instead of T) into a group.
      */
-    async groupBy<Key, Value>(keyFn: Transform<T, Key>, valueFn: Transform<T, Value>): Promise<Map<Key, Value[]>>
-    async groupBy<Key, Value>(keyFn: Transform<T, Key>, valueFn?: Transform<T, Value|T>): Promise<Map<Key, (T|Value)[]>> {
+    async groupBy<Key, Value>(keyFn: (t: T) => Key, valueFn:(t: T) => Value): Promise<Map<Key, Value[]>>
+    async groupBy<Key, Value>(keyFn: (t: T) => Key, valueFn?: (t: T) => (Value|T)): Promise<Map<Key, (T|Value)[]>> {
         let map = new Map<Key, (T|Value)[]>()
         valueFn ??= (t) => t
         for await (const item of this) {
@@ -904,15 +904,15 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
      * 
      * @throws if duplicates are found for a given key.
      */
-    associateBy<Key>( uniqueKeyFn: Transform<T, Key>, ): Promise<Map<Key, T>>;
+    associateBy<Key>( uniqueKeyFn: (t: T) => Key, ): Promise<Map<Key, T>>;
     /**
      * Takes an additional `valueFn` to extract a value from `T`. The returned
      * map maps from Key to Value. (instead of Key to T)
      */
-    associateBy<Key, Value>( uniqueKeyFn: Transform<T, Key>, valueFn: Transform<T, Value> ): Promise<Map<Key, Value>>;
+    associateBy<Key, Value>( uniqueKeyFn: (t: T) => Key, valueFn:(t: T) => Value ): Promise<Map<Key, Value>>;
     async associateBy<Key, Value>(
-        uniqueKeyFn: Transform<T, Key>,
-        valueFn?: Transform<T, T|Value>
+        uniqueKeyFn: (t: T) => Key,
+        valueFn?: (t: T) => (Value|T)
     ): Promise<Map<Key, T|Value>> {
         let map = new Map<Key, T|Value>()
         valueFn ??= (t) => t
@@ -1070,9 +1070,6 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
  */
 export type Awaitable<T> = T | PromiseLike<T>
 
-/** A function that transforms from In to Out */
-export type Transform<In,Out> = (i: In) => Out
-
 /** Filters for matches (where boolean is true) */
 export type Filter<T> = (t: T) => boolean
 
@@ -1144,7 +1141,7 @@ export interface RangeArgs {
  * Call `map()` to perform a transformation in parallel.
  */
 export type LazyParallel<T> = {
-    readonly map: <Out>(t: Transform<T, Promise<Out>>) => LazyAsync<Out>
+    readonly map: <Out>(t: (t: T) => Promise<Out>) => LazyAsync<Out>
 }
 
 export interface JoinToStringArgs {
