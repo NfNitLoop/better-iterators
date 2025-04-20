@@ -29,7 +29,7 @@
  * 
  * Note that iterating a Lazy(Async) will consume its items -- the operation is
  * not repeatable. If you need to iterate multiple times, save your result to
- * an array with {@link Lazy#toArray}
+ * an array with {@link Lazy.toArray}
  * 
  * ```ts
  * import { lazy, range } from "./mod.ts"
@@ -134,9 +134,12 @@ import { stateful, type StatefulPromise } from "./_src/promise.ts";
 import { Queue } from "./_src/queue.ts";
 
 /**
- * Create a Lazy(Async) from your (Async)Iterator. 
+ * Call this on an `Iterable` to begin transforming it.
  */
 export function lazy<T>(iter: Iterable<T>): Lazy<T>
+/**
+ * Call this on an `AsyncIterable` to begin transforming it.
+ */
 export function lazy<T>(iter: AsyncIterable<T>): LazyAsync<T>
 export function lazy<T>(iter: Iterable<T>|AsyncIterable<T>): Lazy<T>|LazyAsync<T> {
     if (Symbol.asyncIterator in iter) {
@@ -165,7 +168,7 @@ export interface LazyShared<T> {
     /**
      * Apply `transform` to each element.
      * 
-     * Works like {@link Array#map}.
+     * Works like {@link Array.map}.
      */
     map<Out>(transform: (t: T) => Out): LazyShared<Out>
 
@@ -173,6 +176,8 @@ export interface LazyShared<T> {
      * Set up parallel transformation of a lazy iterable.
      * 
      * Example: `lazy(iterable).parallel(5).map(it => { … } )`
+     * 
+     * @param parallelism The upper bound on how many simultaneous async functions we will run to perform a transformation.
      */
     parallel(parallelism: number, options?: ParallelMapOptions): LazyParallel<T>
 
