@@ -1,6 +1,6 @@
 {
   "name": "@nfnitloop/better-iterators",
-  "version": "1.5.0",
+  "version": "2.0.0-rc1",
   "exports": "./mod.ts",
   "publish": {
     "exclude": [
@@ -8,7 +8,18 @@
     ]
   },
   "tasks": {
-    "test": "deno test -A --doc && deno lint"
+    "test": {
+      "dependencies": ["check", "test:unit"]
+    },
+    "test:unit": "deno test -A --doc",
+    "check": {
+      "dependencies": ["check:types", "check:publish"]
+    },
+    "check:types": "deno lint",
+    "check:publish": {
+      "command": "deno publish --dry-run --allow-dirty",
+      "dependencies": ["check:types"]
+    }
   },
   "lint": {
     "rules": {
