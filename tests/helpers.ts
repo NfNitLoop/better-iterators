@@ -1,5 +1,3 @@
-// deno-lint-ignore-file explicit-module-boundary-types
-
 export { assert, assertEquals, assertIsError, assertThrows } from "https://deno.land/std@0.179.0/testing/asserts.ts";
 export { delay } from "https://deno.land/std@0.179.0/async/delay.ts";
 
@@ -10,12 +8,12 @@ export class ParallelTracker {
     count = 0
     highest = 0
 
-    start() {
+    start(): void {
         this.count++
         if (this.count > this.highest) this.highest = this.count
     }
 
-    end() {
+    end(): void {
         this.count--
     }
 }
@@ -28,16 +26,16 @@ export class Timer {
         this.start()
     }
 
-    stop() {
+    stop(): void {
         this.ended = Date.now()
     }
 
-    start() {
+    start(): void {
         this.started = Date.now()
         this.ended = undefined
     }
 
-    get elapsedMs() {
+    get elapsedMs(): number {
         let start = this.started
         if (!start) { throw new Error(`Timer was not started`)}
         let end = this.ended ?? Date.now()
@@ -45,8 +43,14 @@ export class Timer {
     }
 }
 
-
-export async function testBoth<T>(t: Deno.TestContext, data: Iterable<T> | (() => Iterable<T>), innerTest: (iter: LazyShared<T>) => Promise<unknown>) {
+/**
+ * Test both Lazy and LazySync.
+ */
+export async function testBoth<T>(
+    t: Deno.TestContext,
+    data: Iterable<T> | (() => Iterable<T>),
+    innerTest: (iter: LazyShared<T>) => Promise<unknown>,
+): Promise<void> {
     let input: () => Iterable<T>
     if (Symbol.iterator in data) {
         const inputValues = [...data]
@@ -81,7 +85,7 @@ export async function assertThrowsAsync(fn: () => void): Promise<unknown> {
 }
 
 
-export interface City {
+export type City = {
     name: string
     pop2023: number
     state: string

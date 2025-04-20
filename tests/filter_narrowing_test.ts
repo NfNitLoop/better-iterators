@@ -1,10 +1,10 @@
 import { lazy } from "../mod.ts";
 import { assertEquals } from "./helpers.ts";
 
-interface Foo {
+type Foo = {
     foo: string
 }
-interface Bar {
+type Bar = {
     bar: string
 }
 

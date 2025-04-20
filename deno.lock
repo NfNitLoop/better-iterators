@@ -1,5 +1,13 @@
 {
-  "version": "2",
+  "version": "4",
+  "specifiers": {
+    "jsr:@nfnitloop/lints@^1.3.0": "1.3.0"
+  },
+  "jsr": {
+    "@nfnitloop/lints@1.3.0": {
+      "integrity": "21cff328d413a24e3ef8fa0434e2ec7ebcc46c6a8e4c796c83cde3790b5c0f20"
+    }
+  },
   "remote": {
     "https://deno.land/std@0.179.0/async/delay.ts": "73aa04cec034c84fc748c7be49bb15cac3dd43a57174bfdb7a4aec22c248f0dd",
     "https://deno.land/std@0.179.0/fmt/colors.ts": "938c5d44d889fb82eff6c358bea8baa7e85950a16c9f6dae3ec3a7a729164471",

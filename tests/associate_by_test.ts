@@ -10,7 +10,7 @@ import { assertThrowsAsync, assertEquals, BIGGEST_US_CITIES, assertThrows, asser
 // This also forces us to check the (relatively complicated) types for the a/sync
 // versions separately.
 // Note: We should NOT rely on the LazyShared interface, because
-// the interface actually exposed by Lazy & LazySync may slightly differ. 
+// the interface actually exposed by Lazy & LazySync may slightly differ.
 Deno.test(function associateBySync() {
     let iter = lazy(BIGGEST_US_CITIES)
     let byCity = iter.associateBy(it => it.name)

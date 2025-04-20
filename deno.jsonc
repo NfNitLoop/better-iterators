@@ -22,6 +22,9 @@
     }
   },
   "lint": {
+    "plugins": [
+      "jsr:@nfnitloop/lints@^1.3"
+    ],
     "rules": {
       "exclude": [
         "prefer-const"

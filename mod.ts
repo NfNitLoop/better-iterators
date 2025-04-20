@@ -163,14 +163,14 @@ export function lazy<T>(iter: Iterable<T>|AsyncIterable<T>): Lazy<T>|LazyAsync<T
  * Operations on lazy iterators consume the underlying iterator. You should not
  * use them again.
  */
-export interface LazyShared<T> {
+export type LazyShared<T> = {
 
     /**
      * Apply `transform` to each element.
      * 
      * Works like {@link Array.map}.
      */
-    map<Out>(transform: (t: T) => Out): LazyShared<Out>
+    readonly map: <Out>(transform: (t: T) => Out) => LazyShared<Out>
 
     /**
      * Set up parallel transformation of a lazy iterable.
@@ -179,73 +179,77 @@ export interface LazyShared<T> {
      * 
      * @param parallelism The upper bound on how many simultaneous async functions we will run to perform a transformation.
      */
-    parallel(parallelism: number, options?: ParallelMapOptions): LazyParallel<T>
+    readonly parallel: (parallelism: number, options?: ParallelMapOptions) => LazyParallel<T>
 
-    /** Keeps only items for which `f` is `true`. */
-    filter(f: Filter<T>): LazyShared<T>
-    /** Overload to support type narrowing. */
-    filter<S extends T>(f: (t: T) => t is S): LazyShared<S>
-
+    readonly filter: {
+        /** Keeps only items for which `f` is `true`. */
+        (f: Filter<T>):  LazyShared<T>;
+        /** Overload to support type narrowing. */
+        <S extends T>(f: (t: T) => t is S):  LazyShared<S>
+    }
 
     /** Limit the iterator to returning at most `count` items. */
-    limit(count: number): LazyShared<T>
+    readonly limit: (count: number) => LazyShared<T>
 
     /** Collect all items into an array. */
-    toArray(): Awaitable<Array<T>>
+    readonly toArray: () => Awaitable<Array<T>>
 
     /** Injects a function to run on each T as it is being iterated. */
-    also(fn: (t: T) => void): LazyShared<T>
+    readonly also: (fn: (t: T) => void) => LazyShared<T>
 
     /** Partition items into `matches` and `others` according to Filter `f`. */
-    partition(f: Filter<T>): Awaitable<Partitioned<T>>
+    readonly partition: (f: Filter<T>) => Awaitable<Partitioned<T>>
 
     /** Get the first item. @throws if there are no items. */
-    first(): Awaitable<T>
+    readonly first: () => Awaitable<T>
 
     /** Get the first item. Returns `defaultValue` if there is no first item. */
-    firstOr<D>(defaultValue: D): Awaitable<T|D>
+    readonly firstOr: <D>(defaultValue: D) => Awaitable<T|D>
 
     /** Skip (up to) the first `count` elements */
-    skip(count: number): LazyShared<T>
+    readonly skip: (count: number) => LazyShared<T>
 
-    /**
-     * Given `keyFn`, use it to extract a key from each item, and create a Map
-     * grouping items by that key.
-     */
-    groupBy<Key>(keyFn: (t: T) => Key): Awaitable<Map<Key, T[]>>
-    /**
-     * Adds a `valueFn` to extract that value (instead of T) into a group.
-     */
-    groupBy<Key, Value>(keyFn: (t: T) => Key, valueFn: (t: T) => Value): Awaitable<Map<Key, Value[]>>
+    /** Group items by some key */
+    readonly groupBy: {
+        /**
+         * Given `keyFn`, use it to extract a key from each item, and create a Map
+         * grouping items by that key.
+         */
+        <Key>(keyFn: (t: T) => Key): Awaitable<Map<Key, T[]>>;
+        /**
+         * Adds a `valueFn` to extract that value (instead of T) into a group.
+         */
+        <Key, Value>(keyFn: (t: T) => Key, valueFn: (t: T) => Value): Awaitable<Map<Key, Value[]>>
+    }
 
-    /**
-     * Given `uniqueKeyFn`, use it to extract a key from each item, and create a
-     * 1:1 map from that to each item.
-     * 
-     * @throws if duplicates are found for a given key.
-     */
-    associateBy<Key>(
-        uniqueKeyFn: (t: T) => Key,
-    ): Awaitable<Map<Key, T>>
-
-    /**
-     * Takes an additional `valueFn` to extract a value from `T`. The returned
-     * map maps from Key to Value. (instead of Key to T)
-     */
-    associateBy<Key, Value>(
-        uniqueKeyFn: (t: T) => Key,
-        valueFn:(t: T) => Value
-    ): Awaitable<Map<Key, Value>>
-    
+    /** Like {@link groupBy}, but returns a Map. */
+    readonly associateBy: {
+        /**
+         * Given `uniqueKeyFn`, use it to extract a key from each item, and create a
+         * 1:1 map from that to each item.
+         * 
+         * @throws if duplicates are found for a given key.
+         */
+        <Key>(uniqueKeyFn: (t: T) => Key): Awaitable<Map<Key, T>>
+         /**
+          * Takes an additional `valueFn` to extract a value from `T`. The returned
+          * map maps from Key to Value. (instead of Key to T)
+          */
+        <Key, Value>(
+            uniqueKeyFn: (t: T) => Key,
+            valueFn:(t: T) => Value
+        ): Awaitable<Map<Key, Value>>;
+         
+    }
 
     /** Flattens a Lazy<Iterable<T>> to a Lazy<T> */
-    flatten(): LazyShared<Flattened<T>>
+    readonly flatten: () => LazyShared<Flattened<T>>
 
     /** Joins multiple string values into a string. */
-    joinToString(args?: JoinToStringArgs): Awaitable<JoinedToString<T>>
+    readonly joinToString: (args?: JoinToStringArgs) => Awaitable<JoinedToString<T>>
 
     /** Fold values. See example in {@link LazyShared#sum} */
-    fold<I>(initialValue: I, foldFn: (i: I, t: T) => I): Awaitable<I>
+    readonly fold: <I>(initialValue: I, foldFn: (i: I, t: T) => I) => Awaitable<I>
 
     /**
      * Sums a Lazy iterator of `number`s.
@@ -258,7 +262,7 @@ export interface LazyShared<T> {
      * ```
      * 
      */
-    sum(): Awaitable<T extends number ? number : never>
+    readonly sum: () => Awaitable<T extends number ? number : never>
     // Note: Technically, the sum() implementation will convert non-numbers to
     // a string and then do string concatenation. But it's probably not desired,
     // and would be more efficient with join(), so we return a `never` type here.
@@ -272,13 +276,13 @@ export interface LazyShared<T> {
      * so can suffer from loss of precision when summing things with vastly
      * different scales, or working with sums over Number.MAX_SAFE_INTEGER.
      */
-    avg(): Awaitable<T extends number ? number : never>
+    readonly avg: () => Awaitable<T extends number ? number : never>
 
     /**
      * Get a "peekable" iterator, which lets you peek() at the next item without
      * removing it from the iterator.
      */
-    peekable(): Peekable<T> | PeekableAsync<T>
+    readonly peekable: () => Peekable<T> | PeekableAsync<T>
 
     /** 
      * Iterate by chunks of a given size formed from the underlying Iterator.
@@ -286,7 +290,7 @@ export interface LazyShared<T> {
      * Each chunk will be exactly `size` until the last chunk, which may be
      * from 1-size items long.
      */
-    chunked(size: number): LazyShared<T[]>
+    readonly chunked: (size: number) => LazyShared<T[]>
 
     /**
      * Repeat items `count` times.
@@ -297,18 +301,18 @@ export interface LazyShared<T> {
      * let nine = range({to: 3}).repeat(3).sum()
      * ```
      */
-    repeat(count: number): LazyShared<T>
+    readonly repeat: (count: number) => LazyShared<T>
 
     /**
      * Like {@link #repeat}, but repeates forever.
      */
-    loop(): LazyShared<T>
+    readonly loop: () => LazyShared<T>
 }
 
 /**
  * Used by {@link LazyShared.parallel}
  */
-export interface ParallelMapOptions {
+export type ParallelMapOptions = {
     /**
      * Enable unordered output.
      * 
@@ -1079,7 +1083,7 @@ export type Awaitable<T> = T | PromiseLike<T>
 export type Filter<T> = (t: T) => boolean
 
 /** The result of partitioning according to a `Filter<T>` */
-export interface Partitioned<T> {
+export type Partitioned<T> = {
     matches: T[],
     others: T[],
 }
@@ -1110,7 +1114,7 @@ export function range(args?: RangeArgs): Lazy<number> {
     return Lazy.from(gen())
 }
 
-export interface RangeArgs {
+export type RangeArgs = {
     /** default: 0 */
     from?: number
 
@@ -1149,7 +1153,7 @@ export type LazyParallel<T> = {
     readonly map: <Out>(t: (t: T) => Promise<Out>) => LazyAsync<Out>
 }
 
-export interface JoinToStringArgs {
+export type JoinToStringArgs = {
     /** The separator to use. Default: ", " */
     sep?: string
 
