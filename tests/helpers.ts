@@ -4,7 +4,7 @@ export { assert, assertEquals, assertIsError, assertThrows } from "https://deno.
 export { delay } from "https://deno.land/std@0.179.0/async/delay.ts";
 
 
-import { lazy, LazyShared } from "../mod.ts";
+import { lazy, type LazyShared } from "../mod.ts";
 
 export class ParallelTracker {
     count = 0

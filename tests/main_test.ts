@@ -95,13 +95,10 @@ Deno.test(async function asyncViaLazyAsync() {
  */
 Deno.test(async function asyncLazyParallel() {
     let zoomie = range({to: 100})
-        .toAsync()
-        .map({
-            parallel: 1000, 
-            async mapper(input) {
-                await delay(50)
-                return input*input
-            },
+        .parallel(100)
+        .map(async (input) => {
+            await delay(50)
+            return input*input
         })
 
     let timer = new Timer()
@@ -119,16 +116,13 @@ Deno.test(async function asyncLazyMaxParallelism() {
 
     let tracker = new ParallelTracker()
     let zoomie = range({to: 100})
-        .toAsync()
-        .map({
-            parallel: maxParallel,
-            async mapper(input) {
-                tracker.start()
-                // trying to control for parallelism for async tasks:
-                await delay(5)
-                tracker.end()
-                return input*input
-            },
+        .parallel(maxParallel)
+        .map(async (input) => {
+            tracker.start()
+            // trying to control for parallelism for async tasks:
+            await delay(5)
+            tracker.end()
+            return input*input
         })
 
     // No iteration yet:
@@ -153,17 +147,13 @@ Deno.test(async function unorderedParallelism() {
 
     let tracker = new ParallelTracker()
     let zoomie = range({to: 10})
-        .toAsync()
-        .map({
-            parallel: maxParallel,
-            ordered: false,
-            async mapper (input) {
-                tracker.start()
-                // trying to control for parallelism for async tasks:
-                await delay(Math.random() * 50)
-                tracker.end()
-                return input*input
-            },
+        .parallel(maxParallel, {unordered: true})
+        .map(async (input) => {
+            tracker.start()
+            // trying to control for parallelism for async tasks:
+            await delay(Math.random() * 50)
+            tracker.end()
+            return input*input
         })
 
     // No iteration yet:

@@ -38,8 +38,8 @@
  * 
  * for (let result of results) { console.log("first pass:", result)}
  * 
- * // Has no more values to yield, will throw an exception:
- * for (let result of results) { console.log("second pass:", result)}
+ * // Has no more values to yield, would throw an exception:
+ * // for (let result of results) { console.log("second pass:", result)}
  * ```
  * 
  * Asynchronous Iteration With Promises (Not Recommended)
@@ -111,12 +111,10 @@
  *     "https://www.example.com/bar"
  * ]
  * let lazySizes = lazy(urls)
- *     .map({
- *         parallel: 5,
- *         async mapper(url) {
- *             let response = await fetch(url)
- *             return await response.text()
- *         }
+ *     .parallel(5)
+ *     .map(async (url) => {
+ *         let response = await fetch(url)
+ *         return await response.text() 
  *     })
  *     // etc.
  * ```
@@ -132,7 +130,7 @@
  */
 
 import { Peekable, PeekableAsync } from "./_src/peek.ts";
-import { stateful, StatefulPromise } from "./_src/promise.ts";
+import { stateful, type StatefulPromise } from "./_src/promise.ts";
 import { Queue } from "./_src/queue.ts";
 
 /**
@@ -172,9 +170,11 @@ export interface LazyShared<T> {
     map<Out>(transform: Transform<T, Out>): LazyShared<Out>
 
     /**
-     * Asynchronously transform elements in parallel.
+     * Set up parallel transformation of a lazy iterable.
+     * 
+     * Example: `lazy(iterable).parallel(5).map(it => { … } )`
      */
-    map<Out>(options: ParallelMapOptions<T, Out>): LazyAsync<Out>
+    parallel(parallelism: number, options?: ParallelMapOptions): LazyParallel<T>
 
     /** Keeps only items for which `f` is `true`. */
     filter(f: Filter<T>): LazyShared<T>
@@ -301,31 +301,18 @@ export interface LazyShared<T> {
 }
 
 /**
- * Passing this to the map() function indicates that you want to map
- * values 
+ * Used by {@link LazyShared.parallel}
  */
-export interface ParallelMapOptions<T, Out> {
+export interface ParallelMapOptions {
     /**
-     * The maximum number of map functions to run in parallel.
-     * This gives you bounded parallelism so that you don't overwhelm
-     * whatever resource you're mapping with. (ex: fetch, exec, write, etc.)
-     */
-    parallel: number
-
-    /**
-     * The async mapping function to run in parallel.
-     */
-    mapper: (t: T) => Promise<Out>
-
-    /**
-     * Should we maintain the input ordering in the output?
+     * Enable unordered output.
      * 
-     * This is the least-surprising behavior, but it comes at the cost of
-     * potential head-of-line blocking.
+     * By default, ordering is maintained, so that results are the least surprising.
      * 
-     * Default: true
+     * However, there is a cost to maintaining order -- it may cause head-of-line blocking.
+     * Enable unodered mode if you don't mind if your results come back in a random order.
      */
-    ordered?: boolean
+    unordered?: true
 }
 
 export class Lazy<T> implements Iterable<T>, LazyShared<T> {
@@ -360,13 +347,15 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
      * 
      * Works like {@link Array#map}.
      */
-    map<Out>(transform: Transform<T, Out>): Lazy<Out>;
-    map<Out>(options: ParallelMapOptions<T,Out>): LazyAsync<Out>;
-    map<Out>(arg: Transform<T,Out>|ParallelMapOptions<T,Out>): Lazy<Out>|LazyAsync<Out> {
-        if ("parallel" in arg) {
-            return this.toAsync().map(arg)
-        }
-        return this.#simpleMap(arg)
+    map<Out>(transform: Transform<T, Out>): Lazy<Out> {
+        return this.#simpleMap(transform)
+    }
+
+    /**
+     * See: {@link LazyShared.parallel}
+     */
+    parallel(parallelism: number, options?: ParallelMapOptions): LazyParallel<T> {
+      return this.toAsync().parallel(parallelism, options)
     }
 
     #simpleMap<Out>(transform: Transform<T, Out>): Lazy<Out> {
@@ -704,18 +693,8 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
      * 
      * Works like {@link Array#map}.
      */
-    map<Out>(transform: Transform<T, Awaitable<Out>>): LazyAsync<Out>;
-    map<Out>(options: ParallelMapOptions<T, Out>): LazyAsync<Out>;
-    map<Out>(arg: Transform<T, Awaitable<Out>>|ParallelMapOptions<T,Out>): LazyAsync<Out> {
-        if ("parallel" in arg) {
-            const { ordered, parallel, mapper } = arg
-            if (ordered == false) {
-                return this.#mapParUnordered(parallel, mapper)
-            }
-            return this.#mapPar(parallel, mapper)
-        }
-
-        return this.#simpleMap(arg)
+    map<Out>(transform: Transform<T, Awaitable<Out>>): LazyAsync<Out> {
+        return this.#simpleMap(transform)
     }
 
     #simpleMap<Out>(transform: Transform<T, Awaitable<Out>>): LazyAsync<Out> {
@@ -728,12 +707,22 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         return LazyAsync.from(gen())
     }
 
-    /**
-     * @deprecated Use {@link map} with {@link ParallelMapOptions} instead.
-     */
-    mapPar<Out>(max: number, transform: Transform<T, Promise<Out>>): LazyAsync<Out> {
-        return this.#mapPar(max, transform)
+    parallel(parallelism: number, options?: ParallelMapOptions): LazyParallel<T> {
+      if (options?.unordered) {
+        return {
+            map: (t) => {
+                return this.#mapParUnordered(parallelism, t)
+            }
+        }
+      }
+
+      return {
+        map: (t) => {
+            return this.#mapPar(parallelism, t)
+        }
+      }
     }
+
 
     #mapPar<Out>(max: number, transform: Transform<T, Promise<Out>>): LazyAsync<Out> {
             let inner = this.#inner
@@ -753,14 +742,6 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         }
 
         return LazyAsync.from(gen())
-    }
-
-    /**
-     * @deprecated Use {@link map} with {@link ParallelMapOptions} 
-     * and `ordered: false`
-     */
-    mapParUnordered<Out>(max: number, transform: Transform<T, Promise<Out>>): LazyAsync<Out> {
-        return this.#mapParUnordered(max, transform)
     }
 
     #mapParUnordered<Out>(max: number, transform: Transform<T, Promise<Out>>): LazyAsync<Out> {
@@ -1155,6 +1136,15 @@ export interface RangeArgs {
      * ```
      */
     inclusive?: boolean
+}
+
+/**
+ * Returned by {@link LazyShared.parallel}. 
+ * 
+ * Call `map()` to perform a transformation in parallel.
+ */
+export type LazyParallel<T> = {
+    readonly map: <Out>(t: Transform<T, Promise<Out>>) => LazyAsync<Out>
 }
 
 export interface JoinToStringArgs {
