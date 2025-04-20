@@ -34,12 +34,12 @@
  * ```ts
  * import { lazy, range } from "./mod.ts"
  *
- * let results = lazy([1, 2, 3, 4, 5]).map(it => `number: ${it}`)
+ * const results = lazy([1, 2, 3, 4, 5]).map(it => `number: ${it}`)
  * 
- * for (let result of results) { console.log("first pass:", result)}
+ * for (const result of results) { console.log("first pass:", result)}
  * 
  * // Has no more values to yield, would throw an exception:
- * // for (let result of results) { console.log("second pass:", result)}
+ * // for (const result of results) { console.log("second pass:", result)}
  * ```
  * 
  * Asynchronous Iteration With Promises (Not Recommended)

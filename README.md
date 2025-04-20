@@ -1,3 +1,5 @@
+[![JSR Version]][JSR Link]
+
 Better Iterators
 ================
 
@@ -30,13 +32,8 @@ Features / Goals
 Installation
 ------------
 
-The [JSR page](https://jsr.io/@nfnitloop/better-iterators) has 
+The [JSR page][JSR Link] has 
 instructions for installing for Deno, npm, yarn, pnpm, and bun.
-
-This package is also published to and installable via:
- * <https://deno.land/x/better_iterators/mod.ts>
- * <https://www.npmjs.com/package/better-iterators>
-
 
 
 Other Iterator Libraries
@@ -54,3 +51,5 @@ name names, but here are some of the problems I had with what I found:
    * implementations or examples that cause unbounded parallelism.
 
 
+[JSR Version]: https://jsr.io/badges/@nfnitloop/better-iterators
+[JSR Link]: https://jsr.io/@nfnitloop/better-iterators
