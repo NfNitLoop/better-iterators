@@ -149,9 +149,14 @@ export function lazy<T>(iter: Iterable<T>|AsyncIterable<T>): Lazy<T>|LazyAsync<T
     return Lazy.from(iter)
 }
 
-// Note: There seems to be a bug in `deno doc` so I'm going to copy/paste the
-// method docs onto the implementors. 😢
+// Note: 
+// jsr.io does not currently inherit JSDoc from implementations:
 // https://github.com/denoland/deno_doc/issues/136
+// As a workaround we manually add links from methods of Lazy and LazyAsync back to
+// the corresponding method from LazyShared. This makes the IDE experience slightly worse
+// (at least, in VSCode), in that you have to click on the link to see the docs.
+// But hopefully it improves the experience on jsr.io, where people may try to read
+// Lazy/LazyAsync to learn their interfaces.
 /**
  * Shared interface for {@link Lazy} and {@link LazyAsync}. 
  * (Note: `LazyAsync` implements some methods that are not shared.)
@@ -395,7 +400,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         return Lazy.from(matchIter())
     }
 
-    /** @implements LazyShared["limit"] */
+    /** Implements {@link LazyShared.limit} */
     limit(count: number): Lazy<T> {
         let inner = this.#inner
         let countIter = function*() {
@@ -408,7 +413,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         return Lazy.from(countIter())
     }
 
-    /** Injects a function to run on each T as it is being iterated. */
+    /** Implements {@link LazyShared.also} */
     also(fn: (t: T) => void): Lazy<T> {
         let inner = this.#inner
         let gen = function*() {
@@ -420,7 +425,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         return Lazy.from(gen())
     }
 
-    /** Partition items into `matches` and `others` according to Filter `f`. */
+    /** Implements {@link LazyShared.partition} */
     partition(f: Filter<T>): Partitioned<T> {
         let matches: T[] = []
         let others: T[] = []
@@ -433,7 +438,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         return {matches, others}
     }
 
-    /** Get the first item. @throws if there are no items. */
+    /** Implements {@link LazyShared.first} */
     first(): T {
         for (let item of this) {
             return item
@@ -441,7 +446,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         throw new Error(`No items.`)
     }
 
-    /** Get the first item. Returns `defaultValue` if there is no first item. */
+    /** Implements {@link LazyShared.firstOr}  */
     firstOr<D>(defaultValue: D): T | D {
         for (let item of this) {
             return item
@@ -449,7 +454,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         return defaultValue
     }
 
-    /** Skip (up to) the first `count` elements */
+    /** Implements {@link LazyShared.skip}  */
     skip(count: number): Lazy<T> {
         let inner = this.#inner
         let gen = function * () {
@@ -470,12 +475,11 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
     }
 
     /**
-     * Given `keyFn`, use it to extract a key from each item, and create a Map
-     * grouping items by that key.
+     * Implements {@link LazyShared.groupBy} 
      */
     groupBy<Key>(keyFn: (t: T) => Key): Map<Key, T[]>;
     /**
-     * Adds a `valueFn` to extract that value (instead of T) into a group.
+     * Implements {@link LazyShared.groupBy} 
      */
     groupBy<Key, Value>(keyFn: (t: T) => Key, valueFn:(t: T) => Value): Map<Key, Value[]>
     groupBy<Key, Value>(keyFn: (t: T) => Key, valueFn?: (t: T) => (Value|T)): Map<Key, (T|Value)[]> {
@@ -493,15 +497,11 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         return map
     }
     /**
-     * Given `uniqueKeyFn`, use it to extract a key from each item, and create a
-     * 1:1 map from that to each item.
-     * 
-     * @throws if duplicates are found for a given key.
+     * Implements {@link LazyShared.associateBy} 
      */
     associateBy<Key>(uniqueKeyFn: (t: T) => Key, ): Map<Key, T>;
     /**
-     * Takes an additional `valueFn` to extract a value from `T`. The returned
-     * map maps from Key to Value. (instead of Key to T)
+     * Implements {@link LazyShared.associateBy} 
      */
     associateBy<Key, Value>( uniqueKeyFn: (t: T) => Key, valueFn:(t: T) => Value ): Map<Key, Value>;
     associateBy<Key, Value>(
@@ -520,7 +520,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         return map
     }
 
-    /** Flattens a Lazy<Iterable<T>> to a Lazy<T> */
+    /** Implements {@link LazyShared.flatten}  */
     flatten(): Lazy<Flattened<T>> {
         let inner = this.#inner
         return Lazy.from(function * () {
@@ -530,13 +530,13 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         }())
     }
 
-    /** Joins multiple string values into a string. */
+    /** Implements {@link LazyShared.joinToString} */
     joinToString(args?: JoinToStringArgs): JoinedToString<T> {
         const sep = args?.sep ?? ", "
         return this.toArray().join(sep) as JoinedToString<T>
     }
 
-    /** Collect all items into an array. */
+    /** Implements {@link LazyShared.toArray} */
     toArray(): Array<T> {
         return [... this.#inner]
     }
@@ -554,6 +554,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         return LazyAsync.from(gen())
     }
 
+    /** Implements {@link LazyShared.fold} */
     fold<I>(initial: I, foldFn: (i: I, t: T) => I): I {
         let inner = this.#inner
         let accumulator = initial
@@ -563,11 +564,13 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         return accumulator
     }
 
+    /** Implements {@link LazyShared.sum} */
     sum(): T extends number ? number : never {
         let out = this.fold(0, (a, b) => a + (b as number))
         return out as (T extends number ? number : never)
     }
 
+    /** Implements {@link LazyShared.avg} */
     avg(): T extends number ? number : never {
         let count = 0
         let sum = this.also( () => { count += 1 } ).sum()
@@ -575,8 +578,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
     }
 
     /**
-     * Get a "peekable" iterator, which lets you peek() at the next item without
-     * removing it from the iterator.
+     * Implements {@link LazyShared.peekable}
      */
     peekable(): Peekable<T> {
         let inner = this.#inner
@@ -584,10 +586,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
     }
 
     /** 
-     * Iterate by chunks of a given size formed from the underlying Iterator.
-     * 
-     * Each chunk will be exactly `size` until the last chunk, which may be
-     * from 1-size items long.
+     * Implements {@link LazyShared.chunked}
      */
     chunked(size: number): Lazy<T[]> {
         let inner = this.#inner
@@ -608,13 +607,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
     }
 
     /**
-     * Repeat items `count` times.
-     * 
-     * ```ts
-     * import { range } from "./mod.ts"
-     * 
-     * let nine = range({to: 3}).repeat(3).sum()
-     * ```
+     * Implements {@link LazyShared.repeat}
      */
     repeat(count: number): Lazy<T> {
         if (count < 0) {
@@ -645,7 +638,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
     }
 
     /**
-     * Like {@link #repeat}, but repeates forever.
+     * Implements {@link LazyShared.loop}
      */
     loop(): Lazy<T> {
         let inner = this.#inner
@@ -673,7 +666,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
 export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
 
     /**
-     * This lets you directly create an AsyncIterable, but you might prefer
+     * This lets you directly create an AsyncIterable, but you should prefer
      * the shorter {@link lazy} function.
      */
     static from<T>(iter: AsyncIterable<T>): LazyAsync<T> {
@@ -701,9 +694,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
     }
 
     /**
-     * Apply `transform` to each element.
-     * 
-     * Works like {@link Array#map}.
+     * Implements {@link LazyShared.map}
      */
     map<Out>(transform: (t: T) => Awaitable<Out>): LazyAsync<Out> {
         return this.#simpleMap(transform)
@@ -719,6 +710,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         return LazyAsync.from(gen())
     }
 
+    /** Implements {@link LazyShared.parallel} */
     parallel(parallelism: number, options?: ParallelMapOptions): LazyParallel<T> {
       if (options?.unordered) {
         return {
@@ -798,9 +790,9 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         return LazyAsync.from(gen())
     }
 
-    /** Overload to support type narrowing. */
+    /** Implements {@link LazyShared.filter} */
     filter<S extends T>(f: (t: T) => t is S): LazyAsync<S>
-    /** Keeps only items for which `f` is `true`. */
+    /** Implements {@link LazyShared.filter} */
     filter(f: Filter<T>): LazyAsync<T>
     filter(f: Filter<T>): LazyAsync<T> {
         let inner = this.#inner
@@ -812,7 +804,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         return LazyAsync.from(gen())
     }
 
-    /** Limit the iterator to returning at most `count` items. */
+    /** Implements {@link LazyShared.limit} */
     limit(count: number): LazyAsync<T> {
         let inner = this.#inner
         let countIter = async function*() {
@@ -825,7 +817,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         return LazyAsync.from(countIter())
     }
 
-    /** Injects a function to run on each T as it is being iterated. */
+    /** Implements {@link LazyShared.also} */
     also(fn: (t: T) => void): LazyAsync<T> {
         let inner = this.#inner
         let gen = async function*() {
@@ -837,7 +829,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         return LazyAsync.from(gen())
     }
 
-    /** Partition items into `matches` and `others` according to Filter `f`. */
+    /** Implements {@link LazyShared.partition} */
     async partition(f: Filter<T>): Promise<Partitioned<T>> {
         let matches: T[] = []
         let others: T[] = []
@@ -850,7 +842,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         return {matches, others}
     }
 
-    /** Get the first item. @throws if there are no items. */
+    /** Implements {@link LazyShared.first} */
     async first(): Promise<T> {
         for await (let item of this) {
             return item
@@ -858,7 +850,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         throw new Error(`No items.`)
     }
 
-    /** Get the first item. Returns `defaultValue` if there is no first item. */
+    /** Implements {@link LazyShared.firstOr} */
     async firstOr<D>(defaultValue: D): Promise<T | D> {
         for await (let item of this) {
             return item
@@ -866,7 +858,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         return defaultValue
     }
 
-    /** Skip (up to) the first `count` elements */
+    /** Implements {@link LazyShared.skip} */
     skip(count: number): LazyAsync<T> {
         let inner = this.#inner
         let gen = async function * () {
@@ -887,12 +879,11 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
     }
 
     /**
-     * Given `keyFn`, use it to extract a key from each item, and create a Map
-     * grouping items by that key.
+     * Implements {@link LazyShared.groupBy}
      */
     async groupBy<Key>(keyFn: (t: T) => Key): Promise<Map<Key, T[]>>
     /**
-     * Adds a `valueFn` to extract that value (instead of T) into a group.
+     * Implements {@link LazyShared.groupBy}
      */
     async groupBy<Key, Value>(keyFn: (t: T) => Key, valueFn:(t: T) => Value): Promise<Map<Key, Value[]>>
     async groupBy<Key, Value>(keyFn: (t: T) => Key, valueFn?: (t: T) => (Value|T)): Promise<Map<Key, (T|Value)[]>> {
@@ -911,15 +902,11 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
     }
 
     /**
-     * Given `uniqueKeyFn`, use it to extract a key from each item, and create a
-     * 1:1 map from that to each item.
-     * 
-     * @throws if duplicates are found for a given key.
+     * Implements {@link LazyShared.associateBy}
      */
     associateBy<Key>( uniqueKeyFn: (t: T) => Key, ): Promise<Map<Key, T>>;
     /**
-     * Takes an additional `valueFn` to extract a value from `T`. The returned
-     * map maps from Key to Value. (instead of Key to T)
+     * Implements {@link LazyShared.associateBy}
      */
     associateBy<Key, Value>( uniqueKeyFn: (t: T) => Key, valueFn:(t: T) => Value ): Promise<Map<Key, Value>>;
     async associateBy<Key, Value>(
@@ -938,7 +925,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         return map
     }
 
-    /** Flattens a Lazy<Iterable<T>> to a Lazy<T> */
+    /** Implements {@link LazyShared.flatten} */
     flatten(): LazyAsync<Flattened<T>> {
         let inner = this.#inner
         return LazyAsync.from(async function * () {
@@ -948,13 +935,13 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         }())
     }
 
-    /** Joins multiple string values into a string. */
+    /** Implements {@link LazyShared.joinToString} */
     async joinToString(args?: JoinToStringArgs): Promise<JoinedToString<T>> {
         const sep = args?.sep ?? ", "
         return (await this.toArray()).join(sep) as JoinedToString<T>
     }
 
-    /** Collect all items into an array. */
+    /** Implements {@link LazyShared.toArray} */
     async toArray(): Promise<T[]> {
         let out: T[] = []
         for await (let item of this) {
@@ -963,6 +950,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         return out
     }
 
+    /** Implements {@link LazyShared.fold} */
     async fold<I>(initial: I, foldFn: (i: I, t: T) => I): Promise<I> {
         let inner = this.#inner
         let accumulator = initial
@@ -972,11 +960,13 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
         return accumulator
     }
 
+    /** Implements {@link LazyShared.sum} */
     async sum(): Promise<T extends number ? number : never> {
         let out = await this.fold(0, (a, b) => a + (b as number))
         return out as (T extends number ? number : never)
     }
 
+    /** Implements {@link LazyShared.avg} */
     async avg(): Promise<T extends number ? number : never> {
         let count = 0
         let sum = await this.also( () => { count += 1 } ).sum()
@@ -984,8 +974,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
     }
     
     /**
-     * Get a "peekable" iterator, which lets you peek() at the next item without
-     * removing it from the iterator.
+     * Implements {@link LazyShared.peekable}
      */
     peekable(): PeekableAsync<T> {
         let inner = this.#inner
@@ -993,10 +982,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
     }
 
     /** 
-     * Iterate by chunks of a given size formed from the underlying Iterator.
-     * 
-     * Each chunk will be exactly `size` until the last chunk, which may be
-     * from 1-size items long.
+     * Implements {@link LazyShared.chunked}
      */
     chunked(size: number): LazyAsync<T[]> {
         let inner = this.#inner
@@ -1017,13 +1003,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
     }
 
     /**
-     * Repeat items `count` times.
-     * 
-     * ```ts
-     * import { range } from "./mod.ts"
-     * 
-     * let nine = range({to: 3}).repeat(3).sum()
-     * ```
+     * Implements {@link LazyShared.repeat}
      */
     repeat(count: number): LazyAsync<T> {
         if (count < 0) {
@@ -1054,7 +1034,7 @@ export class LazyAsync<T> implements AsyncIterable<T>, LazyShared<T> {
     }
 
     /**
-     * Like {@link #repeat}, but repeates forever.
+     * Implements {@link LazyShared.loop}
      */
     loop(): LazyAsync<T> {
         let inner = this.#inner
@@ -1153,9 +1133,15 @@ export type RangeArgs = {
  * Call `map()` to perform a transformation in parallel.
  */
 export type LazyParallel<T> = {
-    readonly map: <Out>(t: (t: T) => Promise<Out>) => LazyAsync<Out>
+    /**
+     * Same as {@link LazyShared.map}
+     */
+    readonly map: <Out>(transform: (t: T) => Promise<Out>) => LazyAsync<Out>
 }
 
+/**
+ * Args for {@link LazyShared.joinToString}
+ */
 export type JoinToStringArgs = {
     /** The separator to use. Default: ", " */
     sep?: string
