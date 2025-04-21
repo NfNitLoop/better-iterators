@@ -347,21 +347,20 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         return inner
     }
 
+    /** Implements the Iterable interface. */
     [Symbol.iterator](): Iterator<T> {
         return this.#inner[Symbol.iterator]()
     }
 
     /**
-     * Apply `transform` to each element.
-     * 
-     * Works like {@link Array#map}.
+     * Implements {@link LazyShared.map}
      */
     map<Out>(transform: (t: T) => Out): Lazy<Out> {
         return this.#simpleMap(transform)
     }
 
     /**
-     * See: {@link LazyShared.parallel}
+     * Implements: {@link LazyShared.parallel}
      */
     parallel(parallelism: number, options?: ParallelMapOptions): LazyParallel<T> {
       return this.toAsync().parallel(parallelism, options)
@@ -377,9 +376,13 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         return Lazy.from(transformIter())
     }
 
-    /** Overload to support type narrowing. */
+    /**
+     * Overload to support type narrowing.
+     * 
+     * Implements {@link LazyShared.filter}
+     */
     filter<S extends T>(f: (t: T) => t is S): Lazy<S>
-    /** Keeps only items for which `f` is `true`. */
+    /** Implements {@link LazyShared.filter} */
     filter(f: Filter<T>): Lazy<T>
     filter(f: Filter<T>): Lazy<T> {
         let inner = this.#inner
@@ -392,7 +395,7 @@ export class Lazy<T> implements Iterable<T>, LazyShared<T> {
         return Lazy.from(matchIter())
     }
 
-    /** Limit the iterator to returning at most `count` items. */
+    /** @implements LazyShared["limit"] */
     limit(count: number): Lazy<T> {
         let inner = this.#inner
         let countIter = function*() {
